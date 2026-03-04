@@ -1,5 +1,8 @@
 # Pipeline configuration — cloud-agnostic
 # Override via env: KAFKA_BOOTSTRAP_SERVERS, BASE_PATH, etc.
+# spark_packages: used by scripts/run_bronze.sh and spark-submit --packages (Kafka connector; not in PyPI)
+
+spark_packages: "org.apache.spark:spark-sql-kafka-0-10_2.13:4.0.2"  # Spark 4.x; for 3.x use spark-sql-kafka-0-10_2.12:3.5.0
 
 kafka:
   bootstrap_servers: "${KAFKA_BOOTSTRAP_SERVERS:-localhost:9092}"

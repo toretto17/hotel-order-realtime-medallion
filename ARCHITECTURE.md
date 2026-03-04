@@ -150,6 +150,31 @@
 - **Examples:** daily_sales_summary (by order_date), customer_360 (one row per customer), restaurant_review_metrics (by restaurant).
 - **Refresh:** Batch job reading from Silver (triggered daily or every N hours); or streaming aggregate if latency requirement is strict.
 - **Partitioning:** By `order_date` or `snapshot_date` for efficient pruning.
+- **Execution (production):** One Gold table = one SQL file (or one aggregation step) for separation of concerns; **one** batch script (e.g. `gold_batch.py`) runs all Gold steps and writes to their paths. Single entry point for ops (`make gold`); see **docs/VIDEO_ANALYSIS.md** §7.
+
+### 4.4 Schema evolution & merge schema
+
+- **Bronze:** Raw JSON in `value` — no schema; any new field (e.g. `discount_code`, `festival`, `seasonal_food`) is already stored. Nothing to change.
+- **Silver:** We parse with a fixed Spark schema (`ORDER_JSON_SCHEMA`). To support new columns:
+  - Add them as **nullable** fields in the schema so old events (without the field) still parse; new events populate them.
+  - Select the new columns into fact_orders (and fact_order_items if they live on items). Do not drop new columns; add them explicitly when the source starts sending them.
+- **Merge schema (read path):** When **reading** Silver Parquet (e.g. for Gold or Postgres sync), use `spark.read.option("mergeSchema", "true").parquet(silver_path)` so that older files (fewer columns) and newer files (more columns) merge; missing columns in old data become null.
+- **Do not remove columns** from the schema for backward compatibility; only add optional (nullable) columns.
+
+### 4.5 Postgres / serving tables (target model)
+
+For a full serving or analytics layer in Postgres, the target tables align with Silver + dimensions:
+
+| Table | Purpose | Source |
+|-------|---------|--------|
+| **fact_orders** | One row per order (order_id, timestamps, amounts, payment, status, optional discount/festival/seasonal) | Silver fact_orders |
+| **fact_order_items** | One row per line item (order_id, item_id, name, category, qty, price, subtotal) | Silver fact_order_items |
+| **dim_product** / **dim_food** | Product/food master (item_id, name, category, active, etc.) | Reference data or from items |
+| **dim_restaurant** | Restaurant master (restaurant_id, name, etc.) | Reference data or CDC |
+| **dim_customer** | Customer master (customer_id, etc.) | Reference data or CDC |
+| **payments** / **dim_payment** | Payment method or transaction details if needed | From order payload or separate topic |
+
+Currently the pipeline writes **Parquet only** (Bronze, Silver). Postgres sync (e.g. batch job or Kafka Connect) is optional and configured via `config/pipeline.yaml` under `postgres`; table DDL and sync job are to be added when the serving layer is implemented.
 
 ---
 
@@ -252,6 +277,16 @@
 - [ ] Schema evolution process (add column in Silver; backfill if needed).
 - [ ] Runbooks for: restart, reset offset, backfill, schema change.
 - [ ] Cost controls: cluster autoscaling bounds, retention on Bronze.
+
+---
+
+## 14. Future project goals (roadmap)
+
+- **Source ingester:** A system (script, API, or service) that produces **varied order events** (different `order_id`, food names, quantities, amounts) so the pipeline is tested with realistic, diverse data.
+- **Hotel ordering website (localhost):** A web app where users place food orders (food name, quantity). When an order is booked, it is published to Kafka so the **same record flows through Bronze → Silver → Gold** and exists in all three layers.
+- **Dashboard (later):** A dashboard (BI tool or simple UI) that reads from Gold (and/or Silver) to show orders, sales, or other metrics.
+
+This aligns with the reference video (source → ingestion → Medallion → consumption). See **README.md** and **docs/VIDEO_ANALYSIS.md** §5.
 
 ---
 

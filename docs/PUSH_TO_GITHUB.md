@@ -1,13 +1,15 @@
 # Push This Project to Your GitHub
 
-Use these steps to put `realtime-order-medallion` on your GitHub so you can share it (e.g. LinkedIn, recruiters). Your profile: [github.com/toretto17](https://github.com/toretto17).
+Use these steps to put this project on your GitHub so you can share it (e.g. LinkedIn, recruiters). Your profile: [github.com/toretto17](https://github.com/toretto17).
+
+**Repo name on GitHub:** `hotel-order-realtime-medallion`
 
 ---
 
-## Step 1: Create a new repository on GitHub
+## Step 1: Create a new repository on GitHub (if not done)
 
 1. Go to **https://github.com/new**
-2. **Repository name:** `realtime-order-medallion` (same as project name)
+2. **Repository name:** `hotel-order-realtime-medallion`
 3. **Description (optional):** e.g. `Production-grade real-time order processing with Medallion Architecture (Bronze, Silver, Gold) — Kafka, Spark, cloud-agnostic`
 4. Choose **Public**
 5. **Do not** check "Add a README", "Add .gitignore", or "Choose a license" (we already have these in the project)
@@ -17,7 +19,7 @@ Use these steps to put `realtime-order-medallion` on your GitHub so you can shar
 
 ## Step 2: Initialize Git and push from your machine
 
-Run these in a terminal from the **project root** (`realtime-order-medallion/`):
+Run these in a terminal from the **project root**:
 
 ```bash
 # 1. Go to project folder
@@ -35,8 +37,8 @@ git commit -m "Initial commit: Medallion architecture, config, schema, learning 
 # 5. Set main branch name (GitHub default)
 git branch -M main
 
-# 6. Add your GitHub repo as remote (replace with your repo URL)
-git remote add origin https://github.com/toretto17/realtime-order-medallion.git
+# 6. Add your GitHub repo as remote (use your actual repo name)
+git remote add origin https://github.com/toretto17/hotel-order-realtime-medallion.git
 
 # 7. Push to GitHub
 git push -u origin main
@@ -45,7 +47,17 @@ git push -u origin main
 If you use **SSH** instead of HTTPS:
 
 ```bash
-git remote add origin git@github.com:toretto17/realtime-order-medallion.git
+git remote add origin git@github.com:toretto17/hotel-order-realtime-medallion.git
+git push -u origin main
+```
+
+### If you already ran the commands with the wrong repo name
+
+If you added `origin` with `realtime-order-medallion` (or another URL), fix it and push:
+
+```bash
+git remote remove origin
+git remote add origin https://github.com/toretto17/hotel-order-realtime-medallion.git
 git push -u origin main
 ```
 
@@ -72,7 +84,7 @@ git status
 If files are already committed, just add the remote and push:
 
 ```bash
-git remote add origin https://github.com/toretto17/realtime-order-medallion.git
+git remote add origin https://github.com/toretto17/hotel-order-realtime-medallion.git
 git branch -M main
 git push -u origin main
 ```
@@ -101,5 +113,5 @@ git push -u origin main --force
 
 After the repo is public:
 
-- **Repo URL:** `https://github.com/toretto17/realtime-order-medallion`
+- **Repo URL:** `https://github.com/toretto17/hotel-order-realtime-medallion`
 - In a post you can say you built a production-style real-time data pipeline (Medallion, Kafka, Spark), document the architecture, and follow a step-by-step learning path. Link to the repo and optionally to `ARCHITECTURE.md` or `docs/LEARNING_PATH.md`.

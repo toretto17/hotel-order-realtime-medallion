@@ -76,6 +76,12 @@ def get_paths_config(config: dict[str, Any] | None = None) -> dict[str, Any]:
     return cfg.get("paths", {})
 
 
+def get_spark_packages(config: dict[str, Any] | None = None) -> str:
+    """Spark --packages string (e.g. Kafka connector); use with spark-submit --packages."""
+    cfg = config or load_config()
+    return cfg.get("spark_packages", "")
+
+
 # Convenience: one-liner for jobs
 def get_pipeline_config(config_path: Path | str | None = None) -> dict[str, Any]:
     """Load full config; use in every streaming/batch job."""

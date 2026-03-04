@@ -1,18 +1,22 @@
-# Realtime Order Medallion — Python runtime
-# Use with Spark 3.x (install separately: e.g. pyspark from PyPI or Spark dist)
+# Realtime Order Medallion — dependencies (single place for install)
+#
+# Install everything:  pip install -r requirements.txt
+# Then: make install  (or run setup.sh) for script permissions and Java check.
+#
+# Not in pip:
+#   - Java 11+ (for Spark): brew install openjdk@17; set JAVA_HOME. See docs/SETUP_AND_RUN.md §4.
+#   - Spark Kafka connector: in config/pipeline.yaml (spark_packages); used by scripts/run_bronze.sh.
 
-# Spark (includes PySpark); use same version as your cluster
+# --- Core: Spark & pipeline ---
 pyspark>=3.4.0
-
-# Kafka client for Spark (built-in in Spark 3.x) — no extra package for readStream
-# For a standalone producer/consumer script (e.g. test data): use confluent-kafka or kafka-python
 confluent-kafka>=2.3.0
-
-# Config and env
 pyyaml>=6.0
 
-# PostgreSQL (optional — for sink or CDC source)
+# --- Optional: Postgres (sink / CDC) ---
 psycopg2-binary>=2.9.0
 
-# Testing (Lesson 8+)
+# --- Hotel ordering website (make web) ---
+flask>=3.0.0
+
+# --- Testing ---
 pytest>=7.0.0

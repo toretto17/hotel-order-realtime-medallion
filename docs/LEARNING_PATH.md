@@ -54,6 +54,9 @@ This document is your **curriculum**. We build one concept at a time, with code 
 
 **Deliverables:**
 - `streaming/bronze_orders.py` — stream from Kafka → write to Bronze path (Parquet) with checkpoint; use config from Lesson 1.
+- `streaming/lesson2_check.py` — config + Spark sanity check (no Kafka required).
+
+**Run:** Config check: `python -m streaming.lesson2_check`. Bronze job (Kafka required): `BASE_PATH=/tmp/medallion spark-submit streaming/bronze_orders.py`. One-shot: `TRIGGER_AVAILABLE_NOW=1` with same command.
 
 **Interview angle:** “What is Bronze?” → Immutable raw copy; replayable. “How do you avoid duplicate reads from Kafka?” → Checkpoint; Spark commits offset only after successful write.
 
@@ -71,6 +74,8 @@ This document is your **curriculum**. We build one concept at a time, with code 
 **Deliverables:**
 - `streaming/silver_fact_orders.py` — Bronze → fact_orders (and optionally fact_order_items); dedupe + watermark; use config.
 
+**Run:** After Bronze has written data: `make silver` or `./scripts/run_silver.sh`. One-shot: `TRIGGER_AVAILABLE_NOW=1 make silver`. Silver reads from `$BASE_PATH/bronze/orders`, writes to `$BASE_PATH/silver/orders` and `$BASE_PATH/silver/order_items`.
+
 **Interview angle:** “How do you deduplicate in streaming?” → Watermark + dropDuplicates. “What if an event arrives 15 minutes late?” → Dropped in that window unless we use allowedLateness; we’ll cover in Lesson 5.
 
 ---
@@ -82,12 +87,13 @@ This document is your **curriculum**. We build one concept at a time, with code 
 **Concepts:**
 - **Gold = pre-aggregated:** By date, by customer, by restaurant. Partitioned by `order_date` for fast reads.
 - **Refresh strategy:** Daily or every N hours; orchestrated by Airflow/Cron later. For now: single batch run.
+- **Structure (production):** Multiple SQL files (one per Gold table) for separation of concerns; **one** batch script (e.g. `gold_batch.py`) that runs all of them and writes to Gold paths. One entry point (`make gold`), not one giant SQL file and not three separate cron jobs. See **VIDEO_ANALYSIS.md** §7.
 
 **Deliverables:**
 - `sql/gold_daily_sales.sql` — aggregate from Silver fact_orders by order_date.
 - `sql/gold_customer_360.sql` — one row per customer (orders count, total spend, etc.).
 - `sql/gold_restaurant_metrics.sql` — by restaurant (optional: with reviews).
-- Small Spark batch script that runs these SQLs and writes to Gold paths (or we do it in Lesson 7).
+- One Spark batch script (e.g. `streaming/gold_batch.py`) that runs these and writes to Gold paths; single entry point for ops.
 
 **Interview angle:** “Why batch for Gold and not streaming?” → Consistency, cost, and most reporting is daily; streaming Gold only if latency requirement is strict.
 

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Collage of Colours — Restaurant &amp; Order</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Source+Sans+3:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <div class="page">
+    <!-- Hero -->
+    <header class="hero">
+      <div class="hero-bg" aria-hidden="true"></div>
+      <div class="hero-content">
+        <h1 class="hero-title">The Collage of Colours</h1>
+        <p class="hero-tagline">A place where food and warmth come together — for every age, every table</p>
+        <a href="#order-cta" class="hero-cta">Order now</a>
+      </div>
+    </header>
+
+    <main class="main">
+      <!-- About -->
+      <section id="about" class="section about">
+        <h2 class="section-title">About us</h2>
+        <div class="about-content">
+          <p class="about-lead">The Collage of Colours is more than a restaurant — it’s where family and friends gather over honest, heartfelt food.</p>
+          <p>We believe in recipes that have been passed down and dishes that bring people together. Whether you’re here for a quiet meal or a celebration, our kitchen serves food made with care, using fresh ingredients and a touch of tradition. From our grandparents’ favourites to today’s favourites, every plate tells a story.</p>
+          <p>Come for the flavours, stay for the warmth. We’re here to make your time at the table memorable.</p>
+        </div>
+      </section>
+
+      <!-- Video (veg food) -->
+      <section id="video" class="section video-section">
+        <h2 class="section-title">Our kitchen — pure veg</h2>
+        <p class="section-desc">Fresh, vegetarian food made with care. Watch a glimpse of what we serve.</p>
+        <div class="video-wrap">
+          <video class="hero-video" crossorigin="anonymous" playsinline preload="auto" muted loop autoplay src="https://video.wixstatic.com/video/4e5aec_e66319ab9b3e4a2bb1bec3917000df52/720p/mp4/file.mp4"></video>
+        </div>
+      </section>
+
+      <!-- Testimonials -->
+      <section id="testimonials" class="section testimonials">
+        <h2 class="section-title">What people say</h2>
+        <p class="section-desc">Stories from families and friends who’ve shared a meal with us.</p>
+        <div class="testimonial-grid">
+          <div class="testimonial-card">
+            <div class="testimonial-photo-wrap passport-photo">
+              <img src="/static/images/testimonial.png" alt="Vaibhav Shenoy — guest at The Collage of Colours" class="testimonial-photo" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+              <div class="testimonial-photo-placeholder" style="display:none;" aria-hidden="true">V S</div>
+            </div>
+            <blockquote class="testimonial-quote">“The food here reminds me of home. I’ve brought my family and my grandparents — at their age, a good meal in a welcoming place means everything. The Collage of Colours gets it right.”</blockquote>
+            <cite class="testimonial-cite"><strong>Vaibhav Shenoy</strong></cite>
+          </div>
+        </div>
+      </section>
+
+      <!-- Order CTA -->
+      <section id="order-cta" class="section order-cta">
+        <h2 class="section-title">Order to your table</h2>
+        <p class="section-desc">Browse our menu below, add what you like, and we’ll bring it to you. No need to sign in — just order and enjoy.</p>
+        <a href="#menu" class="btn btn-cta">View menu &amp; order</a>
+      </section>
+
+      <!-- Menu view -->
+      <section id="order-view" class="view section">
+        <h2 id="menu" class="section-title">Our menu</h2>
+        <p class="section-desc">Choose your dishes and quantities. Your order will be prepared and sent to your table.</p>
+
+        <form id="order-form" class="menu-form">
+          {% for category in categories_order %}
+          {% set items_in_cat = by_cat.get(category, []) %}
+          {% if items_in_cat %}
+          <div class="menu-category">
+            <h3 class="category-name">{{ category | replace("_", " ") | title }}</h3>
+            <div class="menu-grid">
+              {% for item in items_in_cat %}
+              <article class="menu-card" data-item-id="{{ item.item_id }}">
+                <div class="menu-card-body">
+                  <h4 class="menu-card-title">{{ item.name }}</h4>
+                  <span class="menu-card-price">${{ "%.2f"|format(item.unit_price) }}</span>
+                  <div class="menu-card-actions">
+                    <button type="button" class="btn-qty btn-qty-minus" data-item-id="{{ item.item_id }}" data-name="{{ item.name }}" data-category="{{ item.category }}" data-unit-price="{{ item.unit_price }}" aria-label="Decrease quantity">−</button>
+                    <span class="qty-display" id="qty-{{ item.item_id }}">0</span>
+                    <button type="button" class="btn-qty btn-qty-plus" data-item-id="{{ item.item_id }}" data-name="{{ item.name }}" data-category="{{ item.category }}" data-unit-price="{{ item.unit_price }}" aria-label="Increase quantity">+</button>
+                  </div>
+                </div>
+              </article>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+          {% endfor %}
+
+          <div class="cart-bar">
+            <div class="cart-summary">
+              <span class="cart-icon" aria-hidden="true">🛒</span>
+              <span id="cart-count">0</span> items · $<span id="cart-total">0.00</span>
+            </div>
+            <button type="submit" class="btn btn-order" id="btn-submit" disabled>Place order</button>
+          </div>
+        </form>
+      </section>
+
+      <!-- Thank you view -->
+      <section id="thankyou-view" class="view hidden">
+        <div class="thankyou-wrap">
+          <div class="thankyou-card">
+            <div class="thankyou-icon">✓</div>
+            <h2 class="thankyou-title">Thank you</h2>
+            <p class="thankyou-message" id="thankyou-message">Your order has been received.</p>
+            <p class="order-id">Order <strong id="thankyou-order-id"></strong></p>
+            <div class="status-block">
+              <span class="status-label">Status</span>
+              <span class="status-value" id="status-value">Preparation in progress</span>
+            </div>
+            <p class="status-note">Your food will be brought to your table. You can place another order anytime.</p>
+            <button type="button" class="btn btn-again" id="btn-order-again">Order again</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p><strong>The Collage of Colours</strong> — Good food, warm tables. Order to your table or visit us.</p>
+      <p class="footer-links"><a href="#about">About</a> · <a href="#video">Our kitchen</a> · <a href="#testimonials">Testimonials</a> · <a href="#menu">Menu</a></p>
+    </footer>
+  </div>
+  <script src="/static/js/main.js"></script>
+</body>
+</html>
