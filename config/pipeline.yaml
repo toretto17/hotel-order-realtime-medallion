@@ -1,0 +1,33 @@
+# Pipeline configuration — cloud-agnostic
+# Override via env: KAFKA_BOOTSTRAP_SERVERS, BASE_PATH, etc.
+
+kafka:
+  bootstrap_servers: "${KAFKA_BOOTSTRAP_SERVERS:-localhost:9092}"
+  topic_orders: "orders"
+  topic_dlq: "orders_dlq"
+  consumer_group: "order-medallion-v1"
+  starting_offsets: "latest"  # use "earliest" for backfill
+
+streaming:
+  trigger_interval: "1 minute"   # or "availableNow" for micro-batch
+  watermark_delay: "10 minutes"
+  allowed_lateness: "1 hour"
+  max_offsets_per_trigger: 10000
+  fail_on_data_loss: true
+
+paths:
+  base: "${BASE_PATH:-s3://your-bucket/data}"
+  checkpoint_bronze: "${BASE_PATH}/checkpoints/bronze_orders"
+  checkpoint_silver: "${BASE_PATH}/checkpoints/silver_orders"
+  bronze_orders: "${BASE_PATH}/bronze/orders"
+  silver_orders: "${BASE_PATH}/silver/orders"
+  silver_order_items: "${BASE_PATH}/silver/order_items"
+  gold_daily_sales: "${BASE_PATH}/gold/daily_sales"
+  gold_customer_360: "${BASE_PATH}/gold/customer_360"
+  gold_restaurant_metrics: "${BASE_PATH}/gold/restaurant_metrics"
+
+postgres:
+  # Optional sink for serving layer
+  jdbc_url: "${POSTGRES_JDBC_URL}"
+  sink_table_orders: "analytics.daily_sales"
+  batch_size: 1000

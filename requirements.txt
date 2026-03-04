@@ -1,0 +1,18 @@
+# Realtime Order Medallion — Python runtime
+# Use with Spark 3.x (install separately: e.g. pyspark from PyPI or Spark dist)
+
+# Spark (includes PySpark); use same version as your cluster
+pyspark>=3.4.0
+
+# Kafka client for Spark (built-in in Spark 3.x) — no extra package for readStream
+# For a standalone producer/consumer script (e.g. test data): use confluent-kafka or kafka-python
+confluent-kafka>=2.3.0
+
+# Config and env
+pyyaml>=6.0
+
+# PostgreSQL (optional — for sink or CDC source)
+psycopg2-binary>=2.9.0
+
+# Testing (Lesson 8+)
+pytest>=7.0.0
