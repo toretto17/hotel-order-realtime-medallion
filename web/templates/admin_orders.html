@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>All orders — The Collage of Colours</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700&family=Source+Sans+3:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="page-admin-orders">
+  <div class="page">
+    <div class="top-bar top-bar-page">
+      <a href="/" class="top-bar-link">Home</a>
+      <span class="top-bar-current">All orders</span>
+      <a href="/" class="btn btn-logout" id="btn-admin-logout">Log out</a>
+    </div>
+    <main class="main main-standalone">
+      <section class="section">
+        <header class="orders-view-header orders-view-header-admin">
+          <h1 class="section-title">All orders</h1>
+          <div class="orders-view-actions">
+            <button type="button" class="btn btn-secondary" id="btn-refresh-admin-orders">Refresh</button>
+          </div>
+        </header>
+        <p class="section-desc admin-subtitle">Mark an order done when it's ready.</p>
+        <div id="admin-orders-list" class="orders-list-wrap">
+          <p class="orders-loading" id="admin-orders-loading">Loading…</p>
+          <table class="orders-table orders-table-improved" id="admin-orders-table" aria-label="All orders" style="display:none;">
+            <thead>
+              <tr><th>Order</th><th>Customer</th><th>Items</th><th class="th-num">Qty</th><th class="th-num">Total</th><th>Status</th><th>Ordered at</th><th>Action</th></tr>
+            </thead>
+            <tbody id="admin-orders-tbody"></tbody>
+          </table>
+          <p class="orders-empty" id="admin-orders-empty" style="display:none;">No orders.</p>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="/static/js/admin_orders_page.js"></script>
+</body>
+</html>

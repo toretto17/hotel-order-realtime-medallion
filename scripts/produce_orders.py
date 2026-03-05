@@ -7,12 +7,11 @@ orders in one run; each order uses random combinations so no duplication issues.
 Per order: 1–5 line items (random). Each line: random food from list, qty 1–10, unit_price 2–30.
 Festivals (Valentine, Christmas, New Year, Diwali, etc.) with matching discount codes applied.
 
+Loads .env from project root so Aiven is default when hosted.
 Usage:
   python3 scripts/produce_orders.py              # default 10 orders
-  python3 scripts/produce_orders.py 100          # 100 orders
-  python3 scripts/produce_orders.py 500
-  PRODUCE_ORDERS_COUNT=1000 python3 scripts/produce_orders.py
-  KAFKA_BOOTSTRAP_SERVERS=localhost:9092 python3 scripts/produce_orders.py 300
+  make produce-orders  or  make produce-orders N=100
+  (ensure .env has Aiven credentials)
 """
 import json
 import os
@@ -20,9 +19,17 @@ import random
 import sys
 from datetime import datetime, timedelta
 
-BOOTSTRAP = os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
+import kafka_producer_config
+
+# Aiven Kafka only: .env required
+kafka_producer_config.load_dotenv()
+
+BOOTSTRAP = os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "").strip()
 TOPIC = os.environ.get("KAFKA_TOPIC", "orders")
 BASE_PATH = os.environ.get("BASE_PATH", "/tmp/medallion")
+if not BOOTSTRAP:
+    print("Error: KAFKA_BOOTSTRAP_SERVERS not set in .env. See docs/AIVEN_SETUP_STEP_BY_STEP.md", file=sys.stderr)
+    sys.exit(1)
 
 # State file: next run continues from last order index (e.g. web-bulk-00000001, web-bulk-00000100).
 # Full clean (make clean-data) removes this file so next run starts from web-bulk-00000001 again.
@@ -210,7 +217,7 @@ def main():
         sys.exit(1)
 
     base_date = datetime.utcnow() - timedelta(days=DAYS_SPREAD)
-    p = Producer({"bootstrap.servers": BOOTSTRAP})
+    p = Producer(kafka_producer_config.build_producer_config())
     err_count = [0]
 
     def on_delivery(err, msg):

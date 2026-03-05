@@ -42,6 +42,9 @@ derby.log
 *.log
 spark-warehouse/
 
+# Web app instance (SQLite orders DB)
+web/instance/
+
 # Local config (do not commit secrets)
 .env.local
 .env.*.local

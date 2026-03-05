@@ -6,6 +6,22 @@
 set -e
 cd "$(dirname "$0")/.."
 
+# Aiven Kafka only: .env is required (KAFKA_BOOTSTRAP_SERVERS + SSL cert paths)
+if [ ! -f .env ]; then
+  echo "Error: .env not found. This project uses Aiven Kafka only."
+  echo "  1. Copy .env.example to .env"
+  echo "  2. Fill in Aiven Kafka credentials (see docs/AIVEN_SETUP_STEP_BY_STEP.md)"
+  exit 1
+fi
+set -a
+source .env
+set +a
+if [ -z "$KAFKA_BOOTSTRAP_SERVERS" ]; then
+  echo "Error: KAFKA_BOOTSTRAP_SERVERS not set in .env"
+  echo "  Add your Aiven Kafka bootstrap URI to .env (see .env.example)"
+  exit 1
+fi
+
 # PySpark/Spark require Java; fail fast with a clear message
 if ! command -v java >/dev/null 2>&1; then
   echo "Error: Java not found. PySpark needs a JVM (Java 11 or 17)."
@@ -30,8 +46,8 @@ if [ -z "$PACKAGES" ]; then
 fi
 
 export BASE_PATH="${BASE_PATH:-/tmp/medallion}"
-export KAFKA_BOOTSTRAP_SERVERS="${KAFKA_BOOTSTRAP_SERVERS:-localhost:9092}"
 
-echo "BASE_PATH=$BASE_PATH KAFKA_BOOTSTRAP_SERVERS=$KAFKA_BOOTSTRAP_SERVERS"
+echo "BASE_PATH=$BASE_PATH"
+echo "KAFKA_BOOTSTRAP_SERVERS=$KAFKA_BOOTSTRAP_SERVERS"
 echo "Spark packages: $PACKAGES"
 exec spark-submit --packages "$PACKAGES" streaming/bronze_orders.py

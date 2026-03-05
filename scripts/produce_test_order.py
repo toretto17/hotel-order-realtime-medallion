@@ -2,17 +2,26 @@
 """
 Produce one test order event to the Kafka 'orders' topic.
 Run from host (not inside a container) so Kafka broker addresses work.
+Loads .env from project root so Aiven is default when hosted.
 Usage:
   python3 scripts/produce_test_order.py
-  KAFKA_BOOTSTRAP_SERVERS=localhost:39092 python3 scripts/produce_test_order.py
+  make produce
+  (ensure .env has Aiven credentials)
 """
 import json
 import os
 import sys
 
-# Bootstrap servers: from env or default (match config/pipeline.yaml; use 29092 for Confluent)
-BOOTSTRAP = os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
+import kafka_producer_config
+
+# Aiven Kafka only: .env required
+kafka_producer_config.load_dotenv()
+
+BOOTSTRAP = os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "").strip()
 TOPIC = os.environ.get("KAFKA_TOPIC", "orders")
+if not BOOTSTRAP:
+    print("Error: KAFKA_BOOTSTRAP_SERVERS not set in .env. See docs/AIVEN_SETUP_STEP_BY_STEP.md", file=sys.stderr)
+    sys.exit(1)
 
 # Order ID matches website convention (web-*); bulk/single test use web-bulk-*
 TEST_ORDER = {
@@ -43,7 +52,7 @@ def main():
         print("Install confluent_kafka: pip install confluent-kafka", file=sys.stderr)
         sys.exit(1)
 
-    p = Producer({"bootstrap.servers": BOOTSTRAP})
+    p = Producer(kafka_producer_config.build_producer_config())
     value = json.dumps(TEST_ORDER).encode("utf-8")
 
     def on_delivery(err, msg):

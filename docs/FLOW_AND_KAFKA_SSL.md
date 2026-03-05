@@ -15,8 +15,7 @@ This doc answers: what happens when you order from the website, when you can run
 3. **Kafka stores the message.** Kafka is like a durable log: it keeps every message until its **retention period** (e.g. 7 days). So the order sits in the topic until something reads it.
 
 4. **Who runs Kafka?**  
-   - **Local dev:** You run Kafka via `make kafka-up` (Docker). So Kafka is “running” on your machine while Docker is up.  
-   - **With Aiven:** Kafka runs **in the cloud** (Aiven’s servers). It runs **continuously**. You don’t start/stop it; Aiven does. So when you order from your website, the message goes over the internet to Aiven Kafka and is stored there.
+   This project uses **Aiven Kafka** only (no local Docker). Kafka runs **in the cloud** (Aiven's servers). It runs **continuously**. You don't start/stop it; Aiven does. When you order from your website, the message goes over the internet to Aiven Kafka and is stored there.
 
 5. **Bronze job** is a **consumer**: it reads from the Kafka topic and writes to Bronze (e.g. Parquet). It does **not** need to be running at the exact moment you order. Kafka holds the messages; Bronze can read them later.
 
@@ -58,6 +57,13 @@ The only real limit is **Kafka’s retention**:
 - If you run Bronze **before** retention expires, all orders in the topic are still there and will be processed.
 - If you run Bronze **after** retention, messages that were deleted will never be read. So the “timeframe” is: **run Bronze before Kafka deletes the messages** (within retention). There is no extra “validation window” in our code.
 
+### 4.1 Backfill with “earliest” but some orders still missing?
+
+If you ran **`make clean-bronze`** and **`KAFKA_STARTING_OFFSETS=earliest make bronze`** and still don’t see certain orders (e.g. ones placed “during deployment”):
+
+- **Most likely: Kafka retention** — The topic only keeps messages for a limited time (or size). On Aiven free tier, retention can be **24 hours or less**. Those orders were produced earlier; by the time you ran the backfill, Kafka had **already deleted** the oldest messages. So “earliest” means the earliest message **still in the topic**, not “all orders ever.”
+- **What you can do:** Check retention in Aiven Console (topic `orders` → settings). For future orders: run Bronze soon after they’re placed, or keep Bronze running so it consumes continuously.
+
 ---
 
 ## 5. How Kafka connection and SSL work (what we did and why)
@@ -74,7 +80,7 @@ Kafka is a **distributed log**. **Producers** (e.g. your Flask app) send message
 
 | Style | What it means | When used |
 |-------|----------------|-----------|
-| **Plain (no security)** | Just host:port (e.g. `localhost:9092`). No encryption, no auth. | Local dev only. |
+| **Plain (no security)** | Just host:port. No encryption, no auth. | Not used in this project (Aiven only). |
 | **SSL/TLS** | Encrypted channel. The **server** has a certificate; the **client** verifies it using a **CA certificate** (e.g. `ca.pem`). So the client trusts the server. | Any time you don’t want traffic in clear text. |
 | **Client certificate (mutual TLS)** | Same as SSL, but the **server** also requires the **client** to present a certificate. So: client trusts server (via CA), server trusts client (via client cert + key). **No username/password.** | Aiven free tier when “SASL” is not available; very common in production. |
 | **SASL** | Username + password (e.g. SCRAM-SHA-256). Often combined with TLS: **SASL_SSL** = encrypted channel + password auth. | When the provider gives you a user/password for Kafka. |
@@ -162,7 +168,7 @@ To **clear everything** and start fresh (e.g. after changing order ID format or 
    - All **Silver** data and Silver checkpoints
    - All **Gold** data
    - The **producer state file** (`.produce_orders_last_id`) so the next `make produce-orders` starts from `web-bulk-00000001` again
-3. **Optional (Aiven):** Kafka topic `orders` still has old messages until retention expires. If you want a truly fresh start and you control the topic, you can create a new topic or wait for retention. Locally, `make kafka-down` and `make kafka-up` gives you a new empty topic.
+3. **Optional (Aiven):** Kafka topic `orders` still has old messages until retention expires. If you want a truly fresh start and you control the topic, you can create a new topic or wait for retention.
 4. Then follow **§7.1 Start again after clean** below.
 
 So: **`make clean`** or **`make clean-data`** = restart everything (all layers + producer counter). After that, new orders (website or producer) use the same `web-*` order ID convention.
@@ -199,22 +205,7 @@ So: **`make clean`** or **`make clean-data`** = restart everything (all layers +
 7. **After Silver has data:**  
    `make gold`
 
-**If you use local Docker Kafka** (no Aiven; default `localhost:9092`):
-
-1. **Start Kafka:**  
-   `make kafka-up`
-
-2. **Wait for broker:**  
-   `make wait-kafka`
-
-3. **Create topic:**  
-   `make topics-create`
-
-4. **Terminal 1 — Bronze:**  
-   `make bronze`
-
-5. **Terminal 2 — Send orders:**  
-   `make produce` or `make produce-orders N=50` or `make web`
+(This project uses Aiven Kafka only; no local Docker Kafka.)
 
 6. **Terminal 3 — Silver, then Gold:**  
    `make silver` then `make gold`

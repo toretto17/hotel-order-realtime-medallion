@@ -43,33 +43,32 @@ Use this same name when cloning, creating a new repo, or referring to the projec
 - **Python:** `requirements.txt` — run `pip3 install -r requirements.txt` or `make install`.
 - **Java 11+:** For Spark; not in pip. See [docs/SETUP_AND_RUN.md](./docs/SETUP_AND_RUN.md#4-install-java-required-for-spark--lesson-2).
 - **Spark Kafka connector:** In `config/pipeline.yaml` (`spark_packages`); used by `make bronze` / `./scripts/run_bronze.sh`.
-- **Kafka:** For Bronze job; start with `make kafka-up` (project Docker) or see [SETUP_AND_RUN.md](./docs/SETUP_AND_RUN.md#80-run-with-makefile-recommended).
+- **Kafka:** This project uses **Aiven Kafka only** (no local Docker). Configure `.env` with Aiven credentials; see [docs/AIVEN_SETUP_STEP_BY_STEP.md](./docs/AIVEN_SETUP_STEP_BY_STEP.md) and [SETUP_AND_RUN.md](./docs/SETUP_AND_RUN.md).
 
-## Quick run (Makefile)
+## Quick run (Makefile) — Aiven Kafka only
 
-From the project root (after `make install` and Java installed):
+From the project root after `make install` and **configuring `.env` with Aiven Kafka credentials** ([docs/AIVEN_SETUP_STEP_BY_STEP.md](./docs/AIVEN_SETUP_STEP_BY_STEP.md)):
 
 ```bash
-make kafka-up        # Start Kafka (Docker)
-make wait-kafka      # Wait until broker is ready
-make topics-create   # Create topic 'orders'
+make wait-kafka      # Wait until Aiven Kafka is ready
+make topics-create   # Create topic 'orders' on Aiven
 make bronze          # Terminal 1: run Bronze job (leave running)
-make produce         # Terminal 2: send one test order
-make silver          # After Bronze has data: Silver (dedup, watermark) → silver/orders, silver/order_items
-make gold            # After Silver has data: Gold batch → gold/daily_sales, customer_360, restaurant_metrics
-make web             # Hotel ordering website (localhost:5000); orders → Kafka → Bronze (run Bronze in another terminal)
+make produce         # Terminal 2: send one test order (or make web for the website)
+make silver          # After Bronze has data
+make gold            # After Silver has data
+make web             # Hotel ordering website (localhost:5000); orders → Aiven Kafka → Bronze
 ```
 
-Or: `make run` to start Kafka, wait, and create the topic; then run `make bronze` and `make produce` in two terminals. Then `make silver` and `make gold` to complete the Medallion pipeline. See `make help` and [docs/SETUP_AND_RUN.md §8.0](./docs/SETUP_AND_RUN.md#80-run-with-makefile-recommended).
+Or: **`make run`** to wait for Aiven and create the topic; then run `make bronze` (T1) and `make produce` or `make web` (T2). See `make help`.
 
-**Hotel website:** Run **`make web`** (with Kafka up and **`make bronze`** running in another terminal). Open http://127.0.0.1:5000, place orders; they go to Kafka and Bronze processes them. Then run Silver and Gold to get new records incrementally. See [docs/SETUP_AND_RUN.md §8.0e](./docs/SETUP_AND_RUN.md#80e-hotel-ordering-website-localhost).
+**Hotel website:** Run **`make web`** (with **`make bronze`** running in another terminal). Open http://127.0.0.1:5000; orders go to Aiven Kafka and Bronze processes them. See [docs/SETUP_AND_RUN.md](./docs/SETUP_AND_RUN.md).
 
 ## Future project goals
 
 - **Source / ingester:** A system (script, API, or app) that produces **varied order events** — different `order_id`s, food names, quantities, amounts — so the pipeline is exercised with realistic, diverse data (not only the single test order).
-- **Hotel ordering website (localhost):** Implemented: run **`make web`**; place orders in the browser → Kafka → Bronze → Silver → Gold. No sign-in; "Order again" for multiple orders; only new records processed incrementally.
+- **Hotel ordering website (localhost):** Implemented: run **`make web`**; place orders in the browser → Kafka → Bronze → Silver → Gold. **Your orders** tab shows orders for the current session; **Admin** tab (set `ADMIN_PASSWORD` in env) lets the owner view all orders and **Mark done** (status update is sent to Kafka so Silver/Gold reflect completed/done). No sign-in for customers; session identifies "your" orders.
 - **Dashboard (later):** A dashboard (e.g. BI or simple UI) that reads from Gold (and/or Silver) to show orders, sales, or other metrics. Optional; part of the project roadmap.
-- **Live hosting:** To run the pipeline and website on free/cloud hosting and **resume from where you left off** (no “offset changed” errors), use **persistent Kafka** (managed or VM with persistent storage), not ephemeral Docker. See **docs/SETUP_AND_RUN.md §12** and §11 (Bronze offset/checkpoint troubleshooting). For zero-cost: free Kafka ([Aiven](https://aiven.io/free-kafka)) + free web host ([Render](https://render.com)) — **docs/FREE_HOSTING.md**.
+- **Live hosting:** This project uses **Aiven Kafka** (persistent). For zero-cost: free Kafka ([Aiven](https://aiven.io/free-kafka)) + free web host ([Render](https://render.com)) — **docs/FREE_HOSTING.md**.
 
 - **Postgres (queryable tables):** Optional serving layer — sink Gold (and optionally Silver) to Postgres. **docs/NEXT_STEPS_AND_FUTURE_GOALS.md** §1.
 - **Free website + domain:** Render free subdomain or custom domain. **docs/NEXT_STEPS_AND_FUTURE_GOALS.md** §2.

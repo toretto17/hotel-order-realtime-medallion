@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Create Kafka topic 'orders' (idempotent). Uses confluent_kafka AdminClient.
-Run from project root. Respects KAFKA_BOOTSTRAP_SERVERS; supports SSL/client cert when using Aiven.
+Create Kafka topic 'orders' on Aiven (idempotent). Uses confluent_kafka AdminClient.
+Requires .env with KAFKA_BOOTSTRAP_SERVERS and SSL certs. Run from project root: make topics-create.
 """
 import os
 import sys
@@ -20,10 +20,13 @@ if _ENV_FILE.is_file():
                 if k and k not in os.environ:
                     os.environ[k] = v
 
-BOOTSTRAP = os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
+BOOTSTRAP = os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "").strip()
 TOPIC = os.environ.get("KAFKA_TOPIC", "orders")
 PARTITIONS = int(os.environ.get("KAFKA_TOPIC_PARTITIONS", "1"))
 REPLICATION = int(os.environ.get("KAFKA_TOPIC_REPLICATION", "1"))
+if not BOOTSTRAP:
+    print("Error: KAFKA_BOOTSTRAP_SERVERS not set in .env. See docs/AIVEN_SETUP_STEP_BY_STEP.md", file=sys.stderr)
+    sys.exit(1)
 
 
 def _admin_config():

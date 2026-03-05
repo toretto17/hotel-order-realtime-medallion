@@ -8,16 +8,24 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Source+Sans+3:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/css/style.css">
+  <script src="https://unpkg.com/@lottiefiles/lottie-player@1.6.0/dist/lottie-player.js"></script>
 </head>
 <body>
   <div class="page">
+    <!-- Top bar: Your orders (visible cream box) before Login -->
+    <div class="top-bar">
+      <a href="/orders" class="top-bar-your-orders" id="top-bar-your-orders">Your orders</a>
+      <span class="top-bar-spacer"></span>
+      <button type="button" class="top-bar-login top-bar-login-visible" id="btn-open-login-top" aria-label="Login or continue as guest">Login</button>
+    </div>
+
     <!-- Hero -->
     <header class="hero">
       <div class="hero-bg" aria-hidden="true"></div>
       <div class="hero-content">
         <h1 class="hero-title">The Collage of Colours</h1>
         <p class="hero-tagline">A place where food and warmth come together — for every age, every table</p>
-        <a href="#order-cta" class="hero-cta">Order now</a>
+        <a href="#menu" class="hero-cta" id="hero-order-now">Order now</a>
       </div>
     </header>
 
@@ -45,16 +53,51 @@
       <section id="testimonials" class="section testimonials">
         <h2 class="section-title">What people say</h2>
         <p class="section-desc">Stories from families and friends who’ve shared a meal with us.</p>
-        <div class="testimonial-grid">
-          <div class="testimonial-card">
-            <div class="testimonial-photo-wrap passport-photo">
-              <img src="/static/images/testimonial.png" alt="Vaibhav Shenoy — guest at The Collage of Colours" class="testimonial-photo" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-              <div class="testimonial-photo-placeholder" style="display:none;" aria-hidden="true">V S</div>
+        <div class="testimonial-scroll-wrap">
+          <div class="testimonial-track" id="testimonial-track">
+          <div class="testimonial-card testimonial-card-item">
+            <div class="testimonial-photo-wrap testimonial-photo-circle">
+              <img src="/static/images/krutika-shah.png" alt="Krutika Shah — guest at The Collage of Colours" class="testimonial-photo" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+              <div class="testimonial-photo-placeholder" style="display:none;" aria-hidden="true">K S</div>
             </div>
-            <blockquote class="testimonial-quote">“The food here reminds me of home. I’ve brought my family and my grandparents — at their age, a good meal in a welcoming place means everything. The Collage of Colours gets it right.”</blockquote>
-            <cite class="testimonial-cite"><strong>Vaibhav Shenoy</strong></cite>
+            <blockquote class="testimonial-quote">"We keep coming back for the variety and the warmth. The South Indian spread is our favourite — fresh, light, and the team always makes us feel at home. Best place for a relaxed family meal."</blockquote>
+            <cite class="testimonial-cite"><strong>Krutika Shah</strong></cite>
+          </div>
+            <div class="testimonial-card testimonial-card-item">
+              <div class="testimonial-photo-wrap testimonial-photo-circle">
+                <img src="/static/images/rahul-shah.png" alt="Rahul Shah" class="testimonial-photo" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <div class="testimonial-photo-placeholder" style="display:none;" aria-hidden="true">R S</div>
+              </div>
+              <blockquote class="testimonial-quote">"Honest food and a calm vibe — that's what I look for. The Collage of Colours delivers both. Great for a quick bite or a long catch-up. The North Indian options are spot on."</blockquote>
+              <cite class="testimonial-cite"><strong>Rahul Shah</strong></cite>
+            </div>
+            <div class="testimonial-card testimonial-card-item">
+              <div class="testimonial-photo-wrap testimonial-photo-circle">
+                <img src="/static/images/ramila-shah.png" alt="Ramila Shah" class="testimonial-photo" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <div class="testimonial-photo-placeholder" style="display:none;" aria-hidden="true">R S</div>
+              </div>
+              <blockquote class="testimonial-quote">"The kind of place where you can bring the whole family. The food is made with care, the portions are generous, and the staff treat you like their own. We leave happy every time."</blockquote>
+              <cite class="testimonial-cite"><strong>Ramila Shah</strong></cite>
+            </div>
+            <div class="testimonial-card testimonial-card-item">
+              <div class="testimonial-photo-wrap testimonial-photo-circle">
+                <img src="/static/images/rajesh-shah.png" alt="Rajesh Shah" class="testimonial-photo" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <div class="testimonial-photo-placeholder" style="display:none;" aria-hidden="true">R S</div>
+              </div>
+              <blockquote class="testimonial-quote">"Quality and consistency matter to me. Here you get both — traditional flavours, clean ingredients, and a menu that has something for everyone. A real gem in the neighbourhood."</blockquote>
+              <cite class="testimonial-cite"><strong>Rajesh Shah</strong></cite>
+            </div>
+            <div class="testimonial-card testimonial-card-item">
+              <div class="testimonial-photo-wrap testimonial-photo-circle">
+                <img src="/static/images/testimonial.png" alt="Vaibhav Shenoy — guest at The Collage of Colours" class="testimonial-photo" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <div class="testimonial-photo-placeholder" style="display:none;" aria-hidden="true">V S</div>
+              </div>
+              <blockquote class="testimonial-quote">"The food here reminds me of home. I've brought my family and my grandparents — at their age, a good meal in a welcoming place means everything. The Collage of Colours gets it right."</blockquote>
+              <cite class="testimonial-cite"><strong>Vaibhav Shenoy</strong></cite>
+            </div>
           </div>
         </div>
+        <div class="testimonial-dots" id="testimonial-dots" aria-hidden="true"></div>
       </section>
 
       <!-- Order CTA -->
@@ -104,20 +147,33 @@
         </form>
       </section>
 
-      <!-- Thank you view -->
+      <!-- Thank you view (with celebration animation when order is placed) -->
       <section id="thankyou-view" class="view hidden">
+        <div id="celebration-container" class="celebration-container" aria-hidden="true"></div>
         <div class="thankyou-wrap">
-          <div class="thankyou-card">
+          <div class="thankyou-card thankyou-card-animate">
             <div class="thankyou-icon">✓</div>
             <h2 class="thankyou-title">Thank you</h2>
             <p class="thankyou-message" id="thankyou-message">Your order has been received.</p>
+            <div class="thankyou-greeting" id="thankyou-greeting" aria-hidden="true"></div>
             <p class="order-id">Order <strong id="thankyou-order-id"></strong></p>
             <div class="status-block">
               <span class="status-label">Status</span>
               <span class="status-value" id="status-value">Preparation in progress</span>
             </div>
+            <div class="thankyou-timer-block">
+              <div class="sand-timer-wrap" aria-hidden="true">
+                <div class="sand-timer" id="thankyou-sand-timer" aria-hidden="true">
+                  <lottie-player id="lottie-hourglass" src="https://assets3.lottiefiles.com/packages/lf20_P0OXuZEU5x.json" background="transparent" speed="1" style="width:44px;height:44px" loop autoplay mode="normal"></lottie-player>
+                </div>
+              </div>
+              <span class="thankyou-estimate" id="thankyou-estimate">Est. 15–20 min</span>
+            </div>
             <p class="status-note">Your food will be brought to your table. You can place another order anytime.</p>
-            <button type="button" class="btn btn-again" id="btn-order-again">Order again</button>
+            <div class="thankyou-actions">
+              <a href="/orders" class="btn btn-again btn-your-orders-same" id="btn-your-orders">View my orders</a>
+              <button type="button" class="btn btn-again" id="btn-order-again">Order again</button>
+            </div>
           </div>
         </div>
       </section>
@@ -125,8 +181,29 @@
 
     <footer class="footer">
       <p><strong>The Collage of Colours</strong> — Good food, warm tables. Order to your table or visit us.</p>
-      <p class="footer-links"><a href="#about">About</a> · <a href="#video">Our kitchen</a> · <a href="#testimonials">Testimonials</a> · <a href="#menu">Menu</a></p>
+      <p class="footer-links"><a href="#about">About</a> · <a href="#video">Our kitchen</a> · <a href="#testimonials">Testimonials</a> · <a href="#menu">Menu</a> · <a href="/orders">Your orders</a> · <button type="button" class="footer-link-btn" id="btn-open-login-footer">Staff login</button></p>
     </footer>
+  </div>
+
+  <!-- Login modal: choose Guest or Staff (Admin) — modern animated -->
+  <div id="login-modal" class="modal-overlay modal-overlay-animate" aria-hidden="true">
+    <div class="modal-card modal-login modal-card-animate">
+      <h3 class="modal-title">Welcome</h3>
+      <p class="modal-desc">Continue as a guest to order, or sign in as staff to manage orders.</p>
+      <div class="login-options">
+        <button type="button" class="btn btn-cta btn-block" id="btn-continue-guest">Continue as guest</button>
+        <div class="login-staff">
+          <p class="login-staff-label">Staff / Admin</p>
+          <form id="login-modal-admin-form" class="admin-login-form">
+            <label for="login-modal-password">Password</label>
+            <input type="password" id="login-modal-password" placeholder="Admin password" autocomplete="current-password">
+            <button type="submit" class="btn btn-cta">Log in as staff</button>
+          </form>
+          <p id="login-modal-error" class="form-error" style="display:none;"></p>
+        </div>
+      </div>
+      <button type="button" class="modal-close" id="btn-close-login-modal" aria-label="Close">&times;</button>
+    </div>
   </div>
   <script src="/static/js/main.js"></script>
 </body>

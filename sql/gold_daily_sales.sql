@@ -25,9 +25,9 @@ SELECT
   SUM(CASE WHEN discount_code IS NOT NULL AND TRIM(discount_code) != '' THEN 1 ELSE 0 END) AS orders_with_discount,
   SUM(CASE WHEN festival IS NOT NULL AND TRIM(festival) != '' THEN 1 ELSE 0 END) AS orders_during_festival,
   SUM(CASE WHEN COALESCE(seasonal_food, FALSE) = TRUE THEN 1 ELSE 0 END) AS orders_with_seasonal_item,
-  -- Status (ops)
-  SUM(CASE WHEN LOWER(COALESCE(order_status, '')) = 'completed' THEN 1 ELSE 0 END) AS completed_count,
-  SUM(CASE WHEN LOWER(COALESCE(order_status, '')) != 'completed' AND order_status IS NOT NULL AND order_status != '' THEN 1 ELSE 0 END) AS other_status_count
+  -- Status (ops): completed/done = fulfilled; pending/preparing/cancelled = other
+  SUM(CASE WHEN LOWER(COALESCE(order_status, '')) IN ('completed', 'done') THEN 1 ELSE 0 END) AS completed_count,
+  SUM(CASE WHEN LOWER(COALESCE(order_status, '')) NOT IN ('completed', 'done') AND order_status IS NOT NULL AND order_status != '' THEN 1 ELSE 0 END) AS other_status_count
 FROM silver_fact_orders
 WHERE order_date IS NOT NULL
 GROUP BY order_date, restaurant_id

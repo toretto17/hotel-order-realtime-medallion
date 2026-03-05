@@ -5,15 +5,10 @@ Reads from Kafka topic (orders), adds metadata columns (_ingestion_ts, _source,
 _partition, _offset), and writes append-only to Bronze path. Checkpoint ensures
 exactly-once semantics: Spark commits Kafka offset only after successful write.
 
-Run (from repo root). You must add the Kafka connector with --packages (Spark does not include it by default):
-
-  spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.13:4.0.2 streaming/bronze_orders.py
-
-With env and one-shot micro-batch:
-  BASE_PATH=/tmp/medallion KAFKA_BOOTSTRAP_SERVERS=localhost:9092 spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.13:4.0.2 streaming/bronze_orders.py
-  TRIGGER_AVAILABLE_NOW=1 BASE_PATH=/tmp/medallion spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.13:4.0.2 streaming/bronze_orders.py
-
-If your Spark is 3.x, use spark-sql-kafka-0-10_2.12:3.5.0 (or match your Spark version).
+Aiven Kafka only. Requires .env with KAFKA_BOOTSTRAP_SERVERS and SSL cert paths (see docs/AIVEN_SETUP_STEP_BY_STEP.md).
+Run from repo root: make bronze (uses scripts/run_bronze.sh which loads .env and spark-submit with Kafka connector).
+One-shot micro-batch: TRIGGER_AVAILABLE_NOW=1 make bronze
+Spark 3.x: set spark_packages in config/pipeline.yaml to spark-sql-kafka-0-10_2.12:3.5.0.
 """
 from __future__ import annotations
 
@@ -76,13 +71,24 @@ def create_bronze_stream(spark: SparkSession, config: dict) -> None:
         if ca:
             read_opts.append(("kafka.ssl.truststore.location", ca))
             read_opts.append(("kafka.ssl.truststore.type", "PEM"))
-        # Client certificate (e.g. Aiven service.cert + service.key) — SSL mutual TLS (PEM)
-        cert = (kafka.get("ssl_cert_location") or "").strip()
-        key = (kafka.get("ssl_key_location") or "").strip()
-        if cert and key:
-            read_opts.append(("kafka.ssl.keystore.type", "PEM"))
-            read_opts.append(("kafka.ssl.keystore.certificate.chain", cert))
-            read_opts.append(("kafka.ssl.keystore.key", key))
+        # Client certificate (e.g. Aiven service.cert + service.key). Kafka Java client expects
+        # PEM *content* for keystore.certificate.chain and keystore.key, not file paths.
+        cert_path = (kafka.get("ssl_cert_location") or "").strip()
+        key_path = (kafka.get("ssl_key_location") or "").strip()
+        if cert_path and key_path:
+            cert_path = Path(cert_path)
+            key_path = Path(key_path)
+            if cert_path.is_file() and key_path.is_file():
+                cert_pem = cert_path.read_text()
+                key_pem = key_path.read_text()
+                read_opts.append(("kafka.ssl.keystore.type", "PEM"))
+                read_opts.append(("kafka.ssl.keystore.certificate.chain", cert_pem))
+                read_opts.append(("kafka.ssl.keystore.key", key_pem))
+            else:
+                raise FileNotFoundError(
+                    f"SSL cert/key files not found: cert={cert_path!s} key={key_path!s}. "
+                    "Set KAFKA_SSL_CERT_LOCATION and KAFKA_SSL_KEY_LOCATION in .env to PEM file paths."
+                )
     if security_protocol in ("SASL_SSL", "SASL_PLAINTEXT"):
         mechanism = (kafka.get("sasl_mechanism") or "PLAIN").strip()
         read_opts.append(("kafka.sasl.mechanism", mechanism))
@@ -157,6 +163,7 @@ def main() -> None:
         .config("spark.sql.streaming.checkpointLocation", get_paths_config(config).get("checkpoint_bronze", "/tmp/check"))
         .getOrCreate()
     )
+    spark.sparkContext.setLogLevel("WARN")  # Less noise; use "INFO" or "DEBUG" to troubleshoot
     create_bronze_stream(spark, config)
 
 

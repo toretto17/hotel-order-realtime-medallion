@@ -19,9 +19,9 @@ This document is the **single place** for configuring and running this project. 
 | **Python packages** | `requirements.txt` | `pip3 install -r requirements.txt` or `make install` |
 | **Java 11+** | System (not in pip) | See [Section 4](#4-install-java-required-for-spark--lesson-2); macOS: `brew install openjdk@17` |
 | **Spark Kafka connector** | `config/pipeline.yaml` → `spark_packages` | Used automatically by `make bronze` / `./scripts/run_bronze.sh` |
-| **Kafka (broker)** | External or project Docker | `make kafka-up` (project `docker-compose.yml`) or see [Section 8.1](#81-set-up-kafka-locally-required-for-lesson-2) |
+| **Kafka (broker)** | Aiven only (no local Docker) | Configure `.env` with Aiven credentials; see [docs/AIVEN_SETUP_STEP_BY_STEP.md](AIVEN_SETUP_STEP_BY_STEP.md). |
 
-**Recommended: use the Makefile** (from project root): `make install` → `make kafka-up` → `make wait-kafka` → `make topics-create` → in terminal 1: `make bronze` → in terminal 2: `make produce`. See [Section 8.0](#80-run-with-makefile-recommended).
+**Recommended: use the Makefile** (from project root): `make install` → configure `.env` (Aiven) → `make wait-kafka` → `make topics-create` → in terminal 1: `make bronze` → in terminal 2: `make produce`. See [Section 8.0](#80-first-time-run-step-by-step).
 
 ---
 
@@ -226,28 +226,15 @@ All pipeline settings are in **`config/pipeline.yaml`**. You do **not** need to 
 
 Any value like `"${VAR:-default}"` is replaced at runtime: if env `VAR` is set, that value is used; otherwise `default`.
 
-### 5.2 Set environment variables (recommended)
+### 5.2 Set environment variables (required for Kafka)
 
-Create a file or export in your shell. Example for **local development**:
+This project uses **Aiven Kafka only** (no local Docker Kafka). Copy `.env.example` to `.env` and fill in your Aiven Kafka credentials:
 
-```bash
-# Base path for all data (Bronze, Silver, Gold, checkpoints). Use a local path if you don't have S3.
-export BASE_PATH=/tmp/medallion
+- **KAFKA_BOOTSTRAP_SERVERS** — from Aiven Console → your Kafka service → Connection information
+- **KAFKA_SECURITY_PROTOCOL** — `SSL` (client certificate; use when Aiven SASL tab is disabled)
+- **KAFKA_SSL_CA_LOCATION**, **KAFKA_SSL_CERT_LOCATION**, **KAFKA_SSL_KEY_LOCATION** — paths to `ca.pem`, `service.cert`, `service.key` (download from Aiven)
 
-# Kafka (only needed when running Bronze/Silver jobs)
-export KAFKA_BOOTSTRAP_SERVERS=localhost:9092
-
-# Optional: use "earliest" to backfill from beginning of topic
-# export KAFKA_STARTING_OFFSETS=earliest
-```
-
-For **production or cloud**, set:
-
-- `BASE_PATH` → e.g. `s3://your-bucket/data` or `abfs://container@account.dfs.core.windows.net/data`
-- `KAFKA_BOOTSTRAP_SERVERS` → your Kafka or MSK bootstrap string
-- `POSTGRES_JDBC_URL` if you use the Postgres sink
-
-You can put these in a file, e.g. `config/env.local`, and run `source config/env.local` before commands (do not commit secrets).
+See [docs/AIVEN_SETUP_STEP_BY_STEP.md](AIVEN_SETUP_STEP_BY_STEP.md) for step-by-step. Optional: `BASE_PATH` (default `/tmp/medallion`), `KAFKA_TOPIC` (default `orders`), `POSTGRES_JDBC_URL` if you use the Postgres sink.
 
 ---
 
@@ -300,15 +287,14 @@ Expected: Kafka/paths printed; “Spark session: OK” if Java is installed. If 
 
 ### 8.0 First-time run (step by step)
 
-**You already ran `make install`.** Do the following in order. All commands are from the **project root** (the folder that contains `Makefile` and `config/`).
+**You already ran `make install`** and **configured `.env` with Aiven Kafka** (see [AIVEN_SETUP_STEP_BY_STEP.md](AIVEN_SETUP_STEP_BY_STEP.md)). Do the following in order. All commands are from the **project root**.
 
 | Step | Where | Command | What it does |
 |------|--------|---------|--------------|
-| **1** | Same terminal | `make kafka-up` | Starts Kafka in Docker (port 9092). |
-| **2** | Same terminal | `make wait-kafka` | Waits until Kafka is ready (up to ~60 s). |
-| **3** | Same terminal | `make topics-create` | Creates the `orders` topic. |
-| **4** | **Terminal 1** (keep it open) | `make bronze` | Runs the Bronze streaming job; leave it running. |
-| **5** | **Terminal 2** (new terminal, same project root) | `make produce` | Sends one test order to Kafka; Bronze will pick it up. |
+| **1** | Same terminal | `make wait-kafka` | Waits until Aiven Kafka is reachable. |
+| **2** | Same terminal | `make topics-create` | Creates the `orders` topic on Aiven. |
+| **3** | **Terminal 1** (keep it open) | `make bronze` | Runs the Bronze streaming job; leave it running. |
+| **4** | **Terminal 2** (new terminal, same project root) | `make produce` | Sends one test order to Aiven Kafka; Bronze will pick it up. |
 
 **Copy-paste order (same terminal for 1–3):**
 
@@ -334,20 +320,19 @@ make produce
 - **Step 4:** Run in Terminal 1 and leave it running (you’ll see Spark logs).  
 - **Step 5:** Run in Terminal 2 (or the first terminal); it sends one event and exits.
 
-**If you use Confluent Kafka (e.g. port 29092):** Skip step 1. Set `export KAFKA_BOOTSTRAP_SERVERS=localhost:29092`, then run steps 2–5 (use `make topics-create`, `make bronze`, `make produce`).
+(Optional: **`make run`** does wait-kafka + topics-create, then prompts you to run `make bronze` and `make produce` or `make web` in two terminals.)
 
 ---
 
 ### 8.0b Makefile reference
 
-- **One-time:** `make install` (you did this).
-- **Start Kafka:** `make kafka-up` → `make wait-kafka` → `make topics-create`.
-- **Run pipeline:** Terminal 1: `make bronze` (leave running). Terminal 2: `make produce`.
-- **Or:** `make run` does kafka-up + wait-kafka + topics-create, then tells you to run `make bronze` and `make produce` in two terminals.
+- **One-time:** `make install`; configure `.env` with Aiven (see [AIVEN_SETUP_STEP_BY_STEP.md](AIVEN_SETUP_STEP_BY_STEP.md)).
+- **Prepare Aiven:** `make wait-kafka` → `make topics-create`. Or `make run` to do both.
+- **Run pipeline:** Terminal 1: `make bronze` (leave running). Terminal 2: `make produce` or `make web`.
 - **Help:** `make help`
 
 **Restart from scratch (remove all Bronze, Silver, Gold data and checkpoints):**  
-Stop any running Bronze/Silver jobs (Ctrl+C). Then run **`make clean-data`**. This deletes everything under `$BASE_PATH` (bronze, silver, gold, checkpoints). After that, run Kafka + topics + Bronze again, then use **`make produce-orders N=100`** (or 500, 1000) to send many orders with random food items, qty 1–10, and random amounts in one go.
+Stop any running Bronze/Silver jobs (Ctrl+C). Then run **`make clean-data`**. This deletes everything under `$BASE_PATH` (bronze, silver, gold, checkpoints). After that, run **`make wait-kafka`** → **`make topics-create`** → **`make bronze`** (T1) → **`make produce-orders N=100`** (or 500, 1000) in another terminal.
 
 **Clean only one layer (e.g. fix Gold without touching Silver):**  
 - **`make clean-gold`** — Remove only Gold tables. Then run **`make gold`** again to recompute aggregations from existing Silver data.  
@@ -377,20 +362,17 @@ Use this when you want to **clean all Bronze, Silver, and Gold** and run the ful
 | Step | Where | Command |
 |------|--------|---------|
 | 1 | One terminal | **`make clean-data`** — Stop Bronze/Silver first (Ctrl+C) if running. Removes all layer data, checkpoints, and order-index state (next produce starts from 1). |
-| 2 | Same terminal | **`make kafka-up`** |
-| 3 | Same terminal | **`make wait-kafka`** |
-| 4 | Same terminal | **`make topics-create`** |
-| 5 | **Terminal 1** (leave open) | **`make bronze`** |
-| 6 | **Terminal 2** | **`make produce-orders N=100`** — Creates 100 orders (ord-00000001 .. ord-00000100) in Bronze. Wait ~1 min for Bronze to write. |
-| 7 | Terminal 2 or 3 | **`TRIGGER_AVAILABLE_NOW=1 make silver`** — One micro-batch: reads Bronze, writes Silver. |
-| 8 | Same terminal | **`make gold`** — Reads Silver, writes Gold aggregations. |
-| 9 | Optional | **`python3 scripts/read_gold.py`** — Inspect Gold tables. |
+| 2 | Same terminal | **`make wait-kafka`** → **`make topics-create`** |
+| 3 | **Terminal 1** (leave open) | **`make bronze`** |
+| 4 | **Terminal 2** | **`make produce-orders N=100`** — Creates 100 orders in Bronze. Wait ~1 min for Bronze to write. |
+| 5 | Terminal 2 or 3 | **`TRIGGER_AVAILABLE_NOW=1 make silver`** — One micro-batch: reads Bronze, writes Silver. |
+| 6 | Same terminal | **`make gold`** — Reads Silver, writes Gold aggregations. |
+| 7 | Optional | **`python3 scripts/read_gold.py`** — Inspect Gold tables. |
 
-**Copy-paste (run 1–4 in one terminal, then 5 in Terminal 1, 6–8 in another):**
+**Copy-paste (run 1–2 in one terminal, then 3 in Terminal 1, 4–6 in another):**
 
 ```bash
 make clean-data
-make kafka-up
 make wait-kafka
 make topics-create
 # Then in Terminal 1: make bronze
@@ -411,8 +393,7 @@ A web UI lets you place orders from a menu; each order is sent to the **same Kaf
 
 | Step | Where | Command |
 |------|--------|---------|
-| 1 | Terminal 1 | **`make kafka-up`** (if not already), **`make wait-kafka`**, **`make topics-create`** |
-| 2 | Terminal 1 | **`make bronze`** — leave running so it consumes orders from the website (and from `make produce` / `make produce-orders` if you use those too) |
+| 1 | Terminal 1 | **`make wait-kafka`**, **`make topics-create`**, then **`make bronze`** — leave running so it consumes orders from the website (and from `make produce` / `make produce-orders` if you use those too) |
 | 3 | Terminal 2 | **`make web`** — starts Flask at **http://127.0.0.1:5000** |
 | 4 | Browser | Open **http://127.0.0.1:5000**, add items (quantity), click **Place order** |
 | 5 | After orders | Run **`TRIGGER_AVAILABLE_NOW=1 make silver`** then **`make gold`** to process new records into Silver and Gold (incremental: only new data) |
@@ -431,101 +412,17 @@ Run **`python3 scripts/read_web_orders.py`** (default: Silver). It shows only ro
 
 ---
 
-### 8.1 Set up Kafka locally (required for Lesson 2)
+### 8.1 Set up Aiven Kafka (required for Lesson 2)
 
-If you are not using the Makefile, choose one of the options below. After Kafka is running, create the topic `orders` (e.g. with `make topics-create` or the commands in Option A).
+This project uses **Aiven Kafka only** (no local Docker Kafka). Follow:
 
-#### Option A: Docker Compose (project Kafka)
+- **[docs/AIVEN_SETUP_STEP_BY_STEP.md](AIVEN_SETUP_STEP_BY_STEP.md)** — Create an Aiven account, Kafka service, download certificates, and configure `.env`.
 
-From project root:
-
-```bash
-docker compose up -d
-```
-
-Then `make wait-kafka` and `make topics-create` (or use Option A manual commands below). The project `docker-compose.yml` runs a single Kafka broker on port 9092.
-
-#### Option B: Docker single container (manual)
-
-**Prerequisite:** [Docker](https://docs.docker.com/get-docker/) installed.
-
-1. **Start a Kafka container** (Kafka 3.x with KRaft, no Zookeeper):
-
-   ```bash
-   docker run -d --name kafka \
-     -p 9092:9092 \
-     -e KAFKA_NODE_ID=1 \
-     -e KAFKA_PROCESS_ROLES=broker,controller \
-     -e KAFKA_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093 \
-     apache/kafka:latest
-   ```
-
-2. **Wait a few seconds** for the broker to start, then **create the topic**:
-
-   ```bash
-   docker exec kafka /opt/kafka/bin/kafka-topics.sh \
-     --create \
-     --topic orders \
-     --bootstrap-server localhost:9092 \
-     --partitions 1 \
-     --replication-factor 1
-   ```
-
-3. **Verify:** List topics and see `orders`:
-
-   ```bash
-   docker exec kafka /opt/kafka/bin/kafka-topics.sh --list --bootstrap-server localhost:9092
-   ```
-
-4. **Optional:** Send one test order (JSON must match the schema in `streaming/schemas/order_events.py`):
-
-   ```bash
-   echo '{"order_id":"ord-00000001","order_timestamp":"2025-03-04T12:00:00Z","restaurant_id":"R1","customer_id":"C1","order_type":"delivery","items":[{"item_id":"I1","name":"Burger","category":"main","quantity":1,"unit_price":10.0,"subtotal":10.0}],"total_amount":10.0,"payment_method":"card","order_status":"completed"}' | \
-     docker exec -i kafka /opt/kafka/bin/kafka-console-producer.sh --bootstrap-server localhost:9092 --topic orders
-   ```
-
-**Stop Kafka later:** `docker stop kafka`. Start again: `docker start kafka`.
-
-#### Option C: Homebrew (macOS)
-
-1. **Install and start Kafka** (installs Kafka and Zookeeper):
-
-   ```bash
-   brew install kafka
-   zookeeper-server-start /opt/homebrew/etc/kafka/zookeeper.properties &
-   kafka-server-start /opt/homebrew/etc/kafka/server.properties &
-   ```
-
-   (Paths may differ; check `brew --prefix kafka` and the config files under that prefix.)
-
-2. **Create the topic** (use the script path from your Homebrew Kafka install):
-
-   ```bash
-   kafka-topics --create --topic orders --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1
-   ```
-
-3. **Verify:** `kafka-topics --list --bootstrap-server localhost:9092`
-
-#### Option D: Apache Kafka binaries
-
-1. Download from [kafka.apache.org](https://kafka.apache.org/downloads) and extract.
-2. Start Zookeeper, then start Kafka (see official Quick Start).
-3. Create topic:
-
-   ```bash
-   bin/kafka-topics.sh --create --topic orders --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1
-   ```
-
-**Check that Kafka is reachable:** From the machine where you will run the Bronze job, ensure `localhost:9092` (or your `KAFKA_BOOTSTRAP_SERVERS`) is open and the broker is up. If you use Docker from another host, use that host’s IP instead of `localhost`.
-
----
+After `.env` is configured, run **`make wait-kafka`** and **`make topics-create`**, then **`make bronze`** and **`make produce`** or **`make web`**.
 
 ### 8.2 Set environment
 
-```bash
-export BASE_PATH=/tmp/medallion
-export KAFKA_BOOTSTRAP_SERVERS=localhost:9092
-```
+Use `.env` with Aiven Kafka credentials (see [AIVEN_SETUP_STEP_BY_STEP.md](AIVEN_SETUP_STEP_BY_STEP.md)). Example: `KAFKA_BOOTSTRAP_SERVERS`, `KAFKA_SECURITY_PROTOCOL=SSL`, cert paths, `BASE_PATH=/tmp/medallion`.
 
 ### 8.3 Run Bronze job (streaming; runs until you stop it)
 
@@ -687,9 +584,9 @@ for name, path in [('daily_sales', '/tmp/medallion/gold/daily_sales'), ('custome
 
 ### 8.7 How to stop the system (when not processing orders)
 
-- **Stop the Bronze streaming job:** In the terminal where `make bronze` is running, press **Ctrl+C**. The Spark job will shut down; you may see a Py4J error in the log — that is normal (see §11 troubleshooting). The checkpoint is saved; you can start Bronze again later and it will resume from the last committed offset.
-- **Stop Kafka (optional):** If you started Kafka with `make kafka-up`, run **`make kafka-down`** from the project root to stop and remove the containers. Your Bronze data and checkpoint under `BASE_PATH` are on disk and are not deleted.
-- **Order of shutdown:** Stop Bronze first (Ctrl+C), then Kafka if you want (`make kafka-down`). When you start again: `make kafka-up` → `make wait-kafka` → `make topics-create` → `make bronze` (and optionally `make produce` or your own producer).
+- **Stop the Bronze (or Silver) streaming job:** In the terminal where `make bronze` or `make silver` is running, press **Ctrl+C**. The Spark job will shut down; you may see a Py4J error in the log — that is normal (see §11 troubleshooting). The checkpoint is saved; you can start Bronze again later and it will resume from the last committed offset.
+- **No local Kafka to stop.** Aiven Kafka runs in the cloud; you only stop your own jobs (Bronze, Silver, Web) with Ctrl+C in each terminal.
+- **Start again:** Run **`make wait-kafka`** → **`make topics-create`** (if needed) → **`make bronze`** (T1) → **`make produce`** or **`make web`** (T2).
 
 ---
 
@@ -716,7 +613,7 @@ After each lesson is added, this section will be updated with the exact command 
 | Variable | Default (in pipeline.yaml) | Purpose |
 |----------|----------------------------|--------|
 | `BASE_PATH` | `s3://your-bucket/data` | Root for all paths: checkpoints, bronze, silver, gold. Set to e.g. `/tmp/medallion` for local. |
-| `KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092` | Kafka broker list for Bronze (and Silver if reading from Kafka). |
+| `KAFKA_BOOTSTRAP_SERVERS` | (required in `.env`) | Aiven Kafka bootstrap URI for Bronze. |
 | `TRIGGER_AVAILABLE_NOW` | (none) | Set to `1` or `true` to run Bronze (or Silver) once and exit (one micro-batch). |
 | `POSTGRES_JDBC_URL` | (none) | Optional; for writing Gold or serving layer to Postgres. |
 | `JAVA_HOME` | (system) | Required for PySpark; point to JDK 11 or 17. |
@@ -773,35 +670,22 @@ Stopping the Spark job with Ctrl+C is normal; the JVM shuts down while Python is
 
 ### Bronze: “Partition orders-0 offset was changed from 104 to 1” / STREAM_FAILED
 
+### Too many Spark logs (Silver / Gold very verbose)
+
+Silver and Gold use Spark; by default Spark prints **INFO** logs for every task, stage, and file read, so you see hundreds of lines for a few orders. **This is normal**, not an error. The jobs already set the log level to **WARN** so you get less output. If you need to debug, set `spark.sparkContext.setLogLevel("INFO")` in the Silver or Gold script. The "HashAggregateExec: codegened fast hashmap does not support this aggregate" message is an informational fallback, not a failure. **Why so many tasks?** Silver and Bronze write many small Parquet files (one or more per run/trigger). Gold reads all of them, so Spark creates many tasks. With few orders but many past runs, you get many files and thus many log lines. For a cleaner slate, use **`make clean-silver`** and **`make clean-gold`** then re-run.
+
 This happens when **the Bronze checkpoint** (e.g. “last processed offset 104”) **does not match Kafka** (e.g. topic now starts at offset 1).
 
-- **Why:** With project Kafka (`make kafka-up`), **Docker Kafka is ephemeral**. When you run **`make stop`** (or `docker compose down`), Kafka is torn down. Next time you run **`make kafka-up`**, you get a **new** Kafka and a **new** topic — offsets start from 1 again. The **checkpoint on disk** still says “104”, so Spark sees a mismatch and fails (to avoid silently skipping data).
-- **Local dev (ephemeral Kafka):** If you intentionally recreated Kafka, reset Bronze so it matches the new topic: run **`make clean-bronze`**, then **`make bronze`**. You are starting fresh with the new Kafka; you are not “resuming” the old one.
-- **Resuming from where you left off:** To truly resume (same offsets, no data loss), **Kafka must persist** across restarts. That means **not** tearing down Kafka when you stop your app — or using **managed/persistent Kafka** (see [§12](#12-live-hosting--persistent-kafka-future-scope)).
-
-We keep **`fail_on_data_loss: true`** in config so that if offsets ever reset in production, the job fails and you investigate instead of silently skipping records.
+- **With Aiven Kafka:** Offsets normally persist. If you recreated the topic or the service was reset, run **`make clean-bronze`**, then **`make bronze`** to start fresh.
+- We keep **`fail_on_data_loss: true`** in config so that if offsets ever reset, the job fails and you investigate instead of silently skipping records.
 
 ---
 
-## 12. Live hosting & persistent Kafka (future scope)
+## 12. Live hosting (Aiven + Render)
 
-When you **host the app and website live** (e.g. free tier of a cloud or PaaS), you need **Bronze to resume from where it left off** after a restart. That only works if **Kafka is persistent**.
+This project uses **Aiven Kafka** (persistent). When you stop only your jobs (Bronze/Silver/Web), Kafka keeps running in the cloud. When you start Bronze again, it **resumes from the last checkpoint** — no "offset changed" error.
 
-| Environment | Kafka | What happens on “restart” |
-|-------------|--------|----------------------------|
-| **Local dev (current)** | Docker (`make kafka-up`) | `make stop` removes Kafka. Next `make kafka-up` = new Kafka, new topic, offsets from 1. Checkpoint (e.g. 104) no longer valid → run **`make clean-bronze`** then **`make bronze`** to align with the new topic. |
-| **Production / live hosting** | **Persistent Kafka** (managed or VM with persistent volume) | Kafka and topic survive restarts. Offsets 1–104 (and beyond) still exist. When you restart Bronze, checkpoint 104 matches Kafka → **resume from 104** with no error. |
-
-**For live hosting:**
-
-1. **Use persistent Kafka**, not ephemeral Docker:
-   - **Managed Kafka:** Confluent Cloud (free tier), Upstash, CloudKarafka, or your cloud’s managed Kafka (e.g. AWS MSK, GCP Confluent).
-   - **Self-hosted:** Kafka on a VM or container with **persistent storage** so the data directory survives restarts.
-2. Set **`KAFKA_BOOTSTRAP_SERVERS`** to that broker (and create the `orders` topic there).
-3. Keep **`fail_on_data_loss: true`** so you never silently skip data if something goes wrong.
-4. When you stop only your **app** (Bronze/Silver/Web), Kafka keeps running. When you start Bronze again, it **resumes from the last checkpoint** — no “offset changed” error, no need to treat records as false or lost.
-
-So: **“Start from where I left off”** is achieved by **persistent Kafka + checkpoint**, not by setting `fail_on_data_loss` to false. The config stays strict; the fix for hosting is to use Kafka that survives restarts. **Free setup:** [FREE_HOSTING.md](FREE_HOSTING.md) (Aiven + Render).
+**Free setup:** [FREE_HOSTING.md](FREE_HOSTING.md) — Aiven (Kafka) + Render (website). Configure `.env` (or Render env vars) with Aiven credentials; keep **`fail_on_data_loss: true`** in config.
 
 ---
 
@@ -809,12 +693,13 @@ So: **“Start from where I left off”** is achieved by **persistent Kafka + ch
 
 | Action | Command (from project root) |
 |--------|-----------------------------|
-| Start Kafka (Docker) | See [Section 8.1](#81-set-up-kafka-locally-required-for-lesson-2) — run container, then create topic `orders` |
-| Install Python deps | `pip3 install -r requirements.txt` |
+| Configure Kafka | Copy `.env.example` to `.env`; add Aiven credentials. See [AIVEN_SETUP_STEP_BY_STEP.md](AIVEN_SETUP_STEP_BY_STEP.md) |
+| Install Python deps | `pip3 install -r requirements.txt` or `make install` |
+| Wait + create topic | `make wait-kafka` then `make topics-create` (or `make run`) |
 | Lesson 1 check | `python3 -m streaming.lesson1_check` |
 | Lesson 2 check | `python3 -m streaming.lesson2_check` |
-| Bronze (streaming) | `./scripts/run_bronze.sh` (uses config/pipeline.yaml for spark_packages and env for BASE_PATH/KAFKA_BOOTSTRAP_SERVERS) |
-| Bronze (one batch) | `TRIGGER_AVAILABLE_NOW=1 ./scripts/run_bronze.sh` |
+| Bronze (streaming) | `make bronze` (loads .env; uses config/pipeline.yaml) |
+| Bronze (one batch) | `TRIGGER_AVAILABLE_NOW=1 make bronze` |
 
 ---
 

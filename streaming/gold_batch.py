@@ -87,6 +87,7 @@ def main() -> None:
         SparkSession.builder.appName("gold_batch")
         .getOrCreate()
     )
+    spark.sparkContext.setLogLevel("WARN")  # Less noise; use "INFO" or "DEBUG" to troubleshoot
 
     sql_dir = _REPO_ROOT / "sql"
     register_silver_views(spark, paths)

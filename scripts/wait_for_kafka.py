@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Wait until Kafka is reachable by listing topics (with retries).
-Used by: make wait-kafka. Exit 0 when ready, non-zero on timeout.
-Supports SSL/client cert when KAFKA_SECURITY_PROTOCOL and cert paths are set (e.g. Aiven).
+Wait until Aiven Kafka is reachable by listing topics (with retries).
+Used by: make wait-kafka. Requires .env with KAFKA_BOOTSTRAP_SERVERS and SSL certs.
+Exit 0 when ready, non-zero on timeout.
 """
 import os
 import sys
@@ -22,8 +22,11 @@ if _ENV_FILE.is_file():
                 if k and k not in os.environ:
                     os.environ[k] = v
 
-BOOTSTRAP = os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
+BOOTSTRAP = os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "").strip()
 MAX_WAIT = int(os.environ.get("KAFKA_WAIT_SECONDS", "60"))
+if not BOOTSTRAP:
+    print("Error: KAFKA_BOOTSTRAP_SERVERS not set in .env. See docs/AIVEN_SETUP_STEP_BY_STEP.md", file=sys.stderr)
+    sys.exit(1)
 INTERVAL = 2
 
 

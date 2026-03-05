@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """
-Test Kafka connection using .env credentials (Aiven or local).
-Run from project root:  python scripts/test_kafka_connection.py
-Or:  make test-kafka   (loads .env then runs this)
+Test Aiven Kafka connection (produce + consume one message). Requires .env with Aiven credentials.
+Run from project root:  make test-kafka
 """
 from __future__ import annotations
 
@@ -35,8 +34,11 @@ def _load_dotenv(path: Path) -> None:
 
 _load_dotenv(_REPO_ROOT / ".env")
 
-BOOTSTRAP = os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
+BOOTSTRAP = os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "").strip()
 TOPIC = os.environ.get("KAFKA_TOPIC", "orders")
+if not BOOTSTRAP:
+    print("Error: KAFKA_BOOTSTRAP_SERVERS not set in .env. See docs/AIVEN_SETUP_STEP_BY_STEP.md", file=sys.stderr)
+    sys.exit(1)
 
 
 def _build_producer_config() -> dict:
@@ -83,7 +85,7 @@ def _build_consumer_config() -> dict:
 
 
 def main() -> int:
-    print("Kafka connection test (using .env)")
+    print("Aiven Kafka connection test (using .env)")
     print(f"  KAFKA_BOOTSTRAP_SERVERS = {BOOTSTRAP}")
     print(f"  KAFKA_TOPIC = {TOPIC}")
     security = os.environ.get("KAFKA_SECURITY_PROTOCOL", "").strip() or "(none)"

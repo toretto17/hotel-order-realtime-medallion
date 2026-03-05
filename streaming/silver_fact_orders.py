@@ -146,17 +146,41 @@ def create_silver_stream(spark: SparkSession, config: dict) -> None:
     )
 
     # -------------------------------------------------------------------------
-    # 3. Deduplicate by order_id (keep latest per key within watermark)
+    # 3. Deduplicate by order_id: keep *latest* event per order (so status updates win)
+    #    dropDuplicates keeps first; we use groupBy + max(struct) so latest order_timestamp_ts wins.
     # -------------------------------------------------------------------------
+    cols_for_latest = [
+        "order_timestamp_ts", "order_id", "restaurant_id", "customer_id", "order_type",
+        "total_amount", "payment_method", "order_status", "discount_code", "festival",
+        "seasonal_food", "_ingestion_ts", "_partition", "_offset",
+    ]
+    max_struct = F.max(F.struct(*[F.col(c) for c in cols_for_latest])).alias("latest")
     deduped = (
         orders.withWatermark("order_timestamp_ts", watermark_delay)
-        .dropDuplicates(["order_id"])
+        .groupBy("order_id")
+        .agg(max_struct)
+        .select(
+            F.col("latest.order_timestamp_ts").alias("order_timestamp"),
+            F.col("latest.order_id"),
+            F.col("latest.restaurant_id"),
+            F.col("latest.customer_id"),
+            F.col("latest.order_type"),
+            F.col("latest.total_amount"),
+            F.col("latest.payment_method"),
+            F.col("latest.order_status"),
+            F.col("latest.discount_code"),
+            F.col("latest.festival"),
+            F.col("latest.seasonal_food"),
+            F.col("latest._ingestion_ts"),
+            F.col("latest._partition"),
+            F.col("latest._offset"),
+        )
     )
 
     # Silver fact_orders: order-level columns (including optional schema-evolution fields)
     fact_orders = deduped.select(
         F.col("order_id"),
-        F.col("order_timestamp_ts").alias("order_timestamp"),
+        F.col("order_timestamp"),
         F.col("restaurant_id"),
         F.col("customer_id"),
         F.col("order_type"),
@@ -252,6 +276,7 @@ def main() -> None:
         .config("spark.sql.streaming.checkpointLocation", get_paths_config(config).get("checkpoint_silver", "/tmp/check_silver"))
         .getOrCreate()
     )
+    spark.sparkContext.setLogLevel("WARN")  # Less noise; use "INFO" or "DEBUG" to troubleshoot
     create_silver_stream(spark, config)
 
 
