@@ -1,0 +1,3 @@
+# Copy your Aiven certs here: ca.pem, service.cert, service.key
+# Then set in .env: KAFKA_SSL_CA_LOCATION, KAFKA_SSL_CERT_LOCATION, KAFKA_SSL_KEY_LOCATION
+# These files are not committed (certs/* in .gitignore).

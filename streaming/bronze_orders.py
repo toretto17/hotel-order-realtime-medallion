@@ -67,6 +67,40 @@ def create_bronze_stream(spark: SparkSession, config: dict) -> None:
     if max_offsets is not None:
         read_opts.append(("maxOffsetsPerTrigger", max_offsets))
 
+    # Optional: SSL/SASL for managed Kafka (Aiven, Confluent Cloud)
+    security_protocol = (kafka.get("security_protocol") or "").strip().upper()
+    if security_protocol in ("SSL", "SASL_SSL", "SASL_PLAINTEXT"):
+        read_opts.append(("kafka.security.protocol", security_protocol))
+    if security_protocol in ("SSL", "SASL_SSL"):
+        ca = (kafka.get("ssl_ca_location") or "").strip()
+        if ca:
+            read_opts.append(("kafka.ssl.truststore.location", ca))
+            read_opts.append(("kafka.ssl.truststore.type", "PEM"))
+        # Client certificate (e.g. Aiven service.cert + service.key) — SSL mutual TLS (PEM)
+        cert = (kafka.get("ssl_cert_location") or "").strip()
+        key = (kafka.get("ssl_key_location") or "").strip()
+        if cert and key:
+            read_opts.append(("kafka.ssl.keystore.type", "PEM"))
+            read_opts.append(("kafka.ssl.keystore.certificate.chain", cert))
+            read_opts.append(("kafka.ssl.keystore.key", key))
+    if security_protocol in ("SASL_SSL", "SASL_PLAINTEXT"):
+        mechanism = (kafka.get("sasl_mechanism") or "PLAIN").strip()
+        read_opts.append(("kafka.sasl.mechanism", mechanism))
+        username = (kafka.get("sasl_username") or "").strip()
+        password = (kafka.get("sasl_password") or "").strip()
+        if username and password:
+            if mechanism in ("SCRAM-SHA-256", "SCRAM-SHA-512"):
+                jaas = (
+                    'org.apache.kafka.common.security.scram.ScramLoginModule required '
+                    f'username="{username}" password="{password}";'
+                )
+            else:
+                jaas = (
+                    'org.apache.kafka.common.security.plain.PlainLoginModule required '
+                    f'username="{username}" password="{password}";'
+                )
+            read_opts.append(("kafka.sasl.jaas.config", jaas))
+
     df = spark.readStream.format("kafka").options(**dict(read_opts)).load()
 
     # Kafka source schema: key, value (binary), topic, partition, offset, timestamp, timestampType

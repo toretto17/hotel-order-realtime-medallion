@@ -46,6 +46,9 @@ spark-warehouse/
 .env.local
 .env.*.local
 *.pem
+# Aiven / Kafka certs (copy ca.pem, service.cert, service.key here; see .env.example)
+certs/*
+!certs/.gitkeep
 
 # Jupyter
 .ipynb_checkpoints/

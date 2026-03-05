@@ -10,12 +10,21 @@ kafka:
   topic_dlq: "orders_dlq"
   consumer_group: "order-medallion-v1"
   starting_offsets: "latest"  # use "earliest" for backfill
+  # Optional: for managed Kafka (Aiven, Confluent Cloud) — set env vars, leave empty for local Docker
+  security_protocol: "${KAFKA_SECURITY_PROTOCOL:-}"
+  ssl_ca_location: "${KAFKA_SSL_CA_LOCATION:-}"
+  ssl_cert_location: "${KAFKA_SSL_CERT_LOCATION:-}"
+  ssl_key_location: "${KAFKA_SSL_KEY_LOCATION:-}"
+  sasl_mechanism: "${KAFKA_SASL_MECHANISM:-}"
+  sasl_username: "${KAFKA_SASL_USERNAME:-}"
+  sasl_password: "${KAFKA_SASL_PASSWORD:-}"
 
 streaming:
   trigger_interval: "1 minute"   # or "availableNow" for micro-batch
   watermark_delay: "10 minutes"
   allowed_lateness: "1 hour"
   max_offsets_per_trigger: 10000
+  # true = fail if Kafka offsets reset (e.g. topic recreated). Use false only for local dev with ephemeral Kafka.
   fail_on_data_loss: true
 
 paths:

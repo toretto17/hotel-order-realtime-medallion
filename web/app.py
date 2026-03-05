@@ -89,13 +89,60 @@ def build_order_payload(order_id: str, items_with_qty: list[dict]) -> dict:
     }
 
 
+def _kafka_producer_config() -> dict:
+    """Build producer config from env; supports plain and SSL/SASL (e.g. Aiven, Confluent Cloud)."""
+    cfg = {"bootstrap.servers": KAFKA_BOOTSTRAP}
+    security = os.environ.get("KAFKA_SECURITY_PROTOCOL", "").strip().upper()
+    if security in ("SSL", "SASL_SSL", "SASL_PLAINTEXT"):
+        cfg["security.protocol"] = security
+    if security in ("SSL", "SASL_SSL"):
+        ca = os.environ.get("KAFKA_SSL_CA_LOCATION") or os.environ.get("KAFKA_SSL_CAFILE")
+        if not ca and os.environ.get("KAFKA_SSL_CA_CERT"):
+            # For PaaS (e.g. Render): cert in env var; write to temp file
+            import tempfile
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".pem", delete=False) as f:
+                f.write(os.environ["KAFKA_SSL_CA_CERT"])
+                ca = f.name
+        if ca:
+            cfg["ssl.ca.location"] = ca
+        # Client certificate (e.g. Aiven service.cert + service.key). On Render use KAFKA_SSL_CERT_CERT / KAFKA_SSL_KEY_CERT (content).
+        cert = os.environ.get("KAFKA_SSL_CERT_LOCATION") or os.environ.get("KAFKA_SSL_CERTFILE")
+        key = os.environ.get("KAFKA_SSL_KEY_LOCATION") or os.environ.get("KAFKA_SSL_KEYFILE")
+        if not cert and os.environ.get("KAFKA_SSL_CERT_CERT"):
+            import tempfile
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".pem", delete=False) as f:
+                f.write(os.environ["KAFKA_SSL_CERT_CERT"])
+                cert = f.name
+        if not key and os.environ.get("KAFKA_SSL_KEY_CERT"):
+            import tempfile
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".pem", delete=False) as f:
+                f.write(os.environ["KAFKA_SSL_KEY_CERT"])
+                key = f.name
+        if cert:
+            cfg["ssl.certificate.location"] = cert
+        if key:
+            cfg["ssl.key.location"] = key
+        key_pass = os.environ.get("KAFKA_SSL_KEY_PASSWORD")
+        if key_pass:
+            cfg["ssl.key.password"] = key_pass
+    if security in ("SASL_SSL", "SASL_PLAINTEXT"):
+        mechanism = os.environ.get("KAFKA_SASL_MECHANISM", "PLAIN").strip()
+        cfg["sasl.mechanism"] = mechanism
+        username = os.environ.get("KAFKA_SASL_USERNAME") or os.environ.get("KAFKA_SASL_USER")
+        password = os.environ.get("KAFKA_SASL_PASSWORD")
+        if username and password:
+            cfg["sasl.username"] = username
+            cfg["sasl.password"] = password
+    return cfg
+
+
 def produce_order(payload: dict) -> tuple[bool, str]:
     """Send order to Kafka; return (success, error_message)."""
     try:
         from confluent_kafka import Producer
     except ImportError:
         return False, "Kafka client not installed (pip install confluent-kafka)"
-    producer = Producer({"bootstrap.servers": KAFKA_BOOTSTRAP})
+    producer = Producer(_kafka_producer_config())
     value = json.dumps(payload).encode("utf-8")
     err_holder = [None]
 

@@ -2,7 +2,7 @@
 # Use from project root. First time: make install
 # Then: make kafka-up → make topics-create → make bronze (terminal 1), make produce (terminal 2)
 
-.PHONY: install check clean-data clean-bronze clean-silver clean-gold kafka-up kafka-down kafka-logs wait-kafka topics-create bronze silver gold produce produce-orders produce-orders-reset web run help
+.PHONY: install check clean clean-data clean-bronze clean-silver clean-gold kafka-up kafka-down kafka-logs wait-kafka topics-create bronze silver gold produce produce-orders produce-orders-reset web run stop test-kafka help
 
 # Default target
 help:
@@ -12,7 +12,8 @@ help:
 	@echo "  make install       Install Python deps, check Java (run once)"
 	@echo ""
 	@echo "Clean (restart or fix one layer):"
-	@echo "  make clean-data    Remove all Bronze, Silver, Gold data and checkpoints"
+	@echo "  make clean         Same as clean-data (full restart)"
+	@echo "  make clean-data    Remove all Bronze, Silver, Gold + checkpoints + producer state (next produce-orders → web-bulk-00000001)"
 	@echo "  make clean-bronze  Remove only Bronze (+ checkpoint)"
 	@echo "  make clean-silver  Remove only Silver (+ checkpoints)"
 	@echo "  make clean-gold    Remove only Gold (then re-run make gold for correct aggregation)"
@@ -20,6 +21,7 @@ help:
 	@echo "Kafka (use project Docker Compose; port 9092):"
 	@echo "  make kafka-up      Start Kafka broker (docker-compose up -d)"
 	@echo "  make kafka-down    Stop Kafka"
+	@echo "  make stop          Stop all (Kafka + reminder to Ctrl+C Bronze/Silver/Web terminals)"
 	@echo "  make kafka-logs    Follow Kafka logs"
 	@echo "  make wait-kafka    Wait until Kafka is reachable (after kafka-up)"
 	@echo "  make topics-create Create topic 'orders' (run after wait-kafka or when using external Kafka)"
@@ -33,8 +35,9 @@ help:
 	@echo "  make produce-orders-reset [N=100] Produce N orders starting from order_id 1"
 	@echo "  make web               Run hotel ordering website (localhost:5000); orders → Kafka → Bronze"
 	@echo ""
-	@echo "Checks (no Kafka):"
+	@echo "Checks:"
 	@echo "  make check         Run lesson1 + lesson2 checks (config, schema, Spark)"
+	@echo "  make test-kafka    Test Kafka connection (loads .env; use after configuring Aiven/local Kafka)"
 	@echo ""
 	@echo "Full run flow (step by step):"
 	@echo "  1. make install"
@@ -45,6 +48,10 @@ help:
 	@echo "  6. make produce     # terminal 2 — send test event"
 	@echo "  7. make silver      # terminal 3 (optional) — reads Bronze, writes Silver (after Bronze has data)"
 	@echo "  8. make gold        # after Silver has data — batch aggregations to Gold"
+	@echo ""
+	@echo "After make clean (or make stop) — start again:"
+	@echo "  Aiven Kafka:  Do NOT run make kafka-up. source .env then make topics-create make bronze (T1) make produce or make web (T2) make silver make gold"
+	@echo "  Local Kafka:  make kafka-up  make wait-kafka  make topics-create  make bronze (T1)  make produce (T2)  make silver  make gold"
 	@echo ""
 	@echo "If you use Confluent Kafka (e.g. port 29092), set before make:"
 	@echo "  export KAFKA_BOOTSTRAP_SERVERS=localhost:29092"
@@ -69,6 +76,10 @@ kafka-up:
 kafka-down:
 	docker compose down
 
+# Stop all services before logging out. Stops Kafka; you must Ctrl+C in each terminal running bronze, silver, or web.
+stop: kafka-down
+	@echo "Kafka stopped. If you had Bronze, Silver, or Web running in other terminals, stop them with Ctrl+C there."
+
 kafka-logs:
 	docker compose logs -f
 
@@ -79,6 +90,10 @@ wait-kafka:
 # Create topic 'orders'. Set KAFKA_BOOTSTRAP_SERVERS if not using project Kafka (e.g. localhost:29092).
 topics-create:
 	python3 scripts/create_topic.py
+
+# Test Kafka connection using .env (produce + consume one message). Use for Aiven or local Kafka.
+test-kafka:
+	python3 scripts/test_kafka_connection.py
 
 # Run Bronze Spark job (reads from Kafka, writes Parquet). Requires Kafka up + topic created.
 bronze:
@@ -115,8 +130,8 @@ produce-orders-reset:
 web:
 	cd web && python3 app.py
 
-# Remove all Bronze, Silver, Gold data and checkpoints under BASE_PATH so you can restart from scratch.
-# Stop Bronze/Silver jobs first (Ctrl+C). Then: make clean-data
+# Full restart: remove all layer data + checkpoints + producer state. Then follow "Start from clean" steps below.
+clean: clean-data
 clean-data:
 	python3 scripts/clean_medallion_data.py
 

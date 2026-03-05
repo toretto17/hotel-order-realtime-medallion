@@ -40,6 +40,7 @@ This document is the **single place** for configuring and running this project. 
 9. [Coming Later: Lessons 3–9](#9-coming-later-lessons-39)
 10. [Environment Variables Reference](#10-environment-variables-reference)
 11. [Troubleshooting](#11-troubleshooting)
+12. [Live hosting & persistent Kafka (future scope)](#12-live-hosting--persistent-kafka-future-scope)
 
 ---
 
@@ -769,6 +770,38 @@ Stopping the Spark job with Ctrl+C is normal; the JVM shuts down while Python is
 
 - Ensure `BASE_PATH` is set and the checkpoint directory is writable.
 - Do not delete the checkpoint directory if you want to resume the same query; use a new path for a fresh start.
+
+### Bronze: “Partition orders-0 offset was changed from 104 to 1” / STREAM_FAILED
+
+This happens when **the Bronze checkpoint** (e.g. “last processed offset 104”) **does not match Kafka** (e.g. topic now starts at offset 1).
+
+- **Why:** With project Kafka (`make kafka-up`), **Docker Kafka is ephemeral**. When you run **`make stop`** (or `docker compose down`), Kafka is torn down. Next time you run **`make kafka-up`**, you get a **new** Kafka and a **new** topic — offsets start from 1 again. The **checkpoint on disk** still says “104”, so Spark sees a mismatch and fails (to avoid silently skipping data).
+- **Local dev (ephemeral Kafka):** If you intentionally recreated Kafka, reset Bronze so it matches the new topic: run **`make clean-bronze`**, then **`make bronze`**. You are starting fresh with the new Kafka; you are not “resuming” the old one.
+- **Resuming from where you left off:** To truly resume (same offsets, no data loss), **Kafka must persist** across restarts. That means **not** tearing down Kafka when you stop your app — or using **managed/persistent Kafka** (see [§12](#12-live-hosting--persistent-kafka-future-scope)).
+
+We keep **`fail_on_data_loss: true`** in config so that if offsets ever reset in production, the job fails and you investigate instead of silently skipping records.
+
+---
+
+## 12. Live hosting & persistent Kafka (future scope)
+
+When you **host the app and website live** (e.g. free tier of a cloud or PaaS), you need **Bronze to resume from where it left off** after a restart. That only works if **Kafka is persistent**.
+
+| Environment | Kafka | What happens on “restart” |
+|-------------|--------|----------------------------|
+| **Local dev (current)** | Docker (`make kafka-up`) | `make stop` removes Kafka. Next `make kafka-up` = new Kafka, new topic, offsets from 1. Checkpoint (e.g. 104) no longer valid → run **`make clean-bronze`** then **`make bronze`** to align with the new topic. |
+| **Production / live hosting** | **Persistent Kafka** (managed or VM with persistent volume) | Kafka and topic survive restarts. Offsets 1–104 (and beyond) still exist. When you restart Bronze, checkpoint 104 matches Kafka → **resume from 104** with no error. |
+
+**For live hosting:**
+
+1. **Use persistent Kafka**, not ephemeral Docker:
+   - **Managed Kafka:** Confluent Cloud (free tier), Upstash, CloudKarafka, or your cloud’s managed Kafka (e.g. AWS MSK, GCP Confluent).
+   - **Self-hosted:** Kafka on a VM or container with **persistent storage** so the data directory survives restarts.
+2. Set **`KAFKA_BOOTSTRAP_SERVERS`** to that broker (and create the `orders` topic there).
+3. Keep **`fail_on_data_loss: true`** so you never silently skip data if something goes wrong.
+4. When you stop only your **app** (Bronze/Silver/Web), Kafka keeps running. When you start Bronze again, it **resumes from the last checkpoint** — no “offset changed” error, no need to treat records as false or lost.
+
+So: **“Start from where I left off”** is achieved by **persistent Kafka + checkpoint**, not by setting `fail_on_data_loss` to false. The config stays strict; the fix for hosting is to use Kafka that survives restarts. **Free setup:** [FREE_HOSTING.md](FREE_HOSTING.md) (Aiven + Render).
 
 ---
 

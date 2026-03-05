@@ -14,8 +14,9 @@ import sys
 BOOTSTRAP = os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
 TOPIC = os.environ.get("KAFKA_TOPIC", "orders")
 
+# Order ID matches website convention (web-*); bulk/single test use web-bulk-*
 TEST_ORDER = {
-    "order_id": "ord-00000001",
+    "order_id": "web-bulk-00000001",
     "order_timestamp": "2025-03-04T12:00:00Z",
     "restaurant_id": "R1",
     "customer_id": "C1",

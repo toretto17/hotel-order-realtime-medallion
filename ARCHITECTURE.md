@@ -282,11 +282,14 @@ Currently the pipeline writes **Parquet only** (Bronze, Silver). Postgres sync (
 
 ## 14. Future project goals (roadmap)
 
-- **Source ingester:** A system (script, API, or service) that produces **varied order events** (different `order_id`, food names, quantities, amounts) so the pipeline is tested with realistic, diverse data.
-- **Hotel ordering website (localhost):** A web app where users place food orders (food name, quantity). When an order is booked, it is published to Kafka so the **same record flows through Bronze → Silver → Gold** and exists in all three layers.
-- **Dashboard (later):** A dashboard (BI tool or simple UI) that reads from Gold (and/or Silver) to show orders, sales, or other metrics.
+- **Source ingester / website:** Implemented: producer script and hotel website produce varied orders; pipeline runs Bronze → Silver → Gold.
+- **Postgres (serving layer):** Optional: sink Gold (and optionally Silver) to Postgres for queryable tables (dashboards, APIs). Parquet remains for processing. See **docs/NEXT_STEPS_AND_FUTURE_GOALS.md** §1.
+- **Free website hosting + domain:** Render free tier (subdomain or custom domain). **docs/FREE_HOSTING.md**; **docs/NEXT_STEPS_AND_FUTURE_GOALS.md** §2.
+- **Orchestrated pipeline:** Trigger Bronze → Silver → Gold automatically (micro-batch + Airflow/Prefect/cron) for cost-effective, hands-off runs. **docs/NEXT_STEPS_AND_FUTURE_GOALS.md** §3.
+- **Streaming vs latency:** Document and support both long-running streaming (low latency) and triggered micro-batch (cost-effective); Zomato/IPO-style latency expectations. **docs/NEXT_STEPS_AND_FUTURE_GOALS.md** §4.
+- **Dashboard (later):** BI or UI reading from Gold (or Postgres).
 
-This aligns with the reference video (source → ingestion → Medallion → consumption). See **README.md** and **docs/VIDEO_ANALYSIS.md** §5.
+This aligns with the reference video (source → ingestion → Medallion → consumption). See **README.md**, **docs/NEXT_STEPS_AND_FUTURE_GOALS.md**, and **docs/VIDEO_ANALYSIS.md** §5.
 
 ---
 

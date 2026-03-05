@@ -24,8 +24,8 @@ BOOTSTRAP = os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
 TOPIC = os.environ.get("KAFKA_TOPIC", "orders")
 BASE_PATH = os.environ.get("BASE_PATH", "/tmp/medallion")
 
-# State file: next run continues from last order index (e.g. today 1-100, tomorrow 101-200).
-# Full clean (make clean-data) removes this file so order IDs start from 1 again.
+# State file: next run continues from last order index (e.g. web-bulk-00000001, web-bulk-00000100).
+# Full clean (make clean-data) removes this file so next run starts from web-bulk-00000001 again.
 ORDER_INDEX_STATE_FILE = os.path.join(BASE_PATH, ".produce_orders_last_id")
 
 # Seed for reproducible runs (optional)
@@ -101,8 +101,9 @@ DAYS_SPREAD = 14
 
 
 def make_order(order_index: int, base_date: datetime) -> dict:
-    """Build one order: random items from FOOD_ITEMS, qty 1–10, unit_price 2–30 per item."""
-    order_id = f"ord-{order_index:08d}"
+    """Build one order: random items from FOOD_ITEMS, qty 1–10, unit_price 2–30 per item.
+    Order ID uses web-bulk-* so it matches website convention (all orders are web-*)."""
+    order_id = f"web-bulk-{order_index:08d}"
     # Random day over last DAYS_SPREAD so we get variety (e.g. 20 orders one day, 50 another)
     days_offset = random.randint(0, DAYS_SPREAD - 1)
     ts = base_date + timedelta(
@@ -200,7 +201,7 @@ def main():
     else:
         start_index = _read_last_order_index() + 1
     end_index = start_index + count - 1
-    print(f"Order IDs: ord-{start_index:08d} .. ord-{end_index:08d} ({count} orders)")
+    print(f"Order IDs: web-bulk-{start_index:08d} .. web-bulk-{end_index:08d} ({count} orders)")
 
     try:
         from confluent_kafka import Producer
