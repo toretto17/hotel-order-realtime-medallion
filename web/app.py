@@ -177,30 +177,33 @@ def create_app():
 
     @app.route("/api/order", methods=["POST"])
     def api_order():
-        data = request.get_json(force=True, silent=True) or {}
-        items = data.get("items") or []
-        if not items:
-            return jsonify({"success": False, "error": "No items in order"}), 400
-        # Validate and resolve menu
-        menu_by_id = {m["item_id"]: m for m in MENU}
-        resolved = []
-        for row in items:
-            iid = row.get("item_id")
-            qty = max(1, int(row.get("quantity", 1)))
-            if iid not in menu_by_id:
-                return jsonify({"success": False, "error": f"Unknown item: {iid}"}), 400
-            resolved.append({**menu_by_id[iid], "quantity": qty})
-        order_id = "web-" + uuid.uuid4().hex[:12]
-        payload = build_order_payload(order_id, resolved)
-        ok, err = produce_order(payload)
-        if not ok:
-            return jsonify({"success": False, "error": err}), 502
-        return jsonify({
-            "success": True,
-            "order_id": order_id,
-            "message": "Thank you! Your order has been received.",
-            "total": payload["total_amount"],
-        })
+        try:
+            data = request.get_json(force=True, silent=True) or {}
+            items = data.get("items") or []
+            if not items:
+                return jsonify({"success": False, "error": "No items in order"}), 400
+            # Validate and resolve menu
+            menu_by_id = {m["item_id"]: m for m in MENU}
+            resolved = []
+            for row in items:
+                iid = row.get("item_id")
+                qty = max(1, int(row.get("quantity", 1)))
+                if iid not in menu_by_id:
+                    return jsonify({"success": False, "error": f"Unknown item: {iid}"}), 400
+                resolved.append({**menu_by_id[iid], "quantity": qty})
+            order_id = "web-" + uuid.uuid4().hex[:12]
+            payload = build_order_payload(order_id, resolved)
+            ok, err = produce_order(payload)
+            if not ok:
+                return jsonify({"success": False, "error": err or "Failed to send order"}), 502
+            return jsonify({
+                "success": True,
+                "order_id": order_id,
+                "message": "Thank you! Your order has been received.",
+                "total": payload["total_amount"],
+            })
+        except Exception as e:
+            return jsonify({"success": False, "error": str(e)}), 500
     return app
 
 

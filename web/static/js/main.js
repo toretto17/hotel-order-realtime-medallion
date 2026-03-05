@@ -88,6 +88,12 @@
       body: JSON.stringify({ items: lines }),
     })
       .then(function (res) {
+        const contentType = res.headers.get("content-type") || "";
+        if (!contentType.includes("application/json")) {
+          return res.text().then(function (text) {
+            throw new Error("Server error. Check connection and try again.");
+          });
+        }
         return res.json().then(function (data) {
           if (!res.ok) throw new Error(data.error || "Order failed");
           return data;
