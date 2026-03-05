@@ -54,11 +54,12 @@ This guide gets your **hotel ordering website** live on the internet so **friend
 
    **Recommended (Root Directory = `web`):**
    - **Build command:** `pip install -r ../requirements.txt`
-   - **Start command:** `gunicorn app:app`
+   - **Start command:** `gunicorn app:app --bind 0.0.0.0:$PORT`  
+     (Render sets `PORT`; you must bind to it or you may see "No open HTTP ports detected".)
 
    **Alternative (Root Directory empty):**
    - **Build command:** `pip install -r requirements.txt`
-   - **Start command:** `cd web && gunicorn app:app`
+   - **Start command:** `cd web && gunicorn app:app --bind 0.0.0.0:$PORT`
 
 4. Click **“Advanced”** and ensure:
    - **Plan:** **Free**.
