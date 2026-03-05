@@ -160,6 +160,10 @@ def create_app():
     from flask import Flask, jsonify, render_template, request
     app = Flask(__name__, static_folder="static", template_folder="templates")
 
+    @app.route("/health")
+    def health():
+        return {"status": "ok"}, 200
+
     @app.route("/")
     def index():
         # Group menu by category: breakfast, south_indian, north_indian, gujarati, beverage, dessert (all veg)
