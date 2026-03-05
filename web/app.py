@@ -204,8 +204,10 @@ def create_app():
     return app
 
 
+# Expose app for Gunicorn: gunicorn app:app
+app = create_app()
+
 if __name__ == "__main__":
-    app = create_app()
     port = int(os.environ.get("PORT", 5000))
     print(f"Hotel ordering: http://127.0.0.1:{port}")
     print("Ensure Kafka is running (make kafka-up) and Bronze (make bronze) to process orders.")
