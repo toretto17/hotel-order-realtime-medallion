@@ -91,8 +91,9 @@ Render cannot read your local `.env` or cert files. You must add every Kafka-rel
    | `HOTEL_RESTAURANT_ID` | `R1` (or your default restaurant id) |
 
 3. **Pasting certs:**  
-   - You can paste the cert/key as **multi-line** (Render accepts it).  
-   - Or as one line: replace real newlines with `\n` (e.g. `-----BEGIN CERTIFICATE-----\nMII...\n-----END CERTIFICATE-----`).
+   - **Best:** Paste the full cert/key with **real line breaks** (copy from your text editor, paste into Render; multi-line is fine).  
+   - **Or:** One line with literal `\n` between lines (e.g. `-----BEGIN CERTIFICATE-----\nMII...\n-----END CERTIFICATE-----`). The app will convert `\n` to newlines.  
+   - Ensure the value **starts with** `-----BEGIN` and **ends with** `-----END ...-----` with no extra quotes or spaces at the start/end. If you see "no certificate or crl found", the CA/cert content is likely truncated or malformed — re-paste and save.
 
 4. Do **not** add `KAFKA_SSL_CA_LOCATION`, `KAFKA_SSL_CERT_LOCATION`, or `KAFKA_SSL_KEY_LOCATION` — on Render there are no file paths; we use `KAFKA_SSL_CA_CERT`, `KAFKA_SSL_CERT_CERT`, and `KAFKA_SSL_KEY_CERT` (contents only).
 

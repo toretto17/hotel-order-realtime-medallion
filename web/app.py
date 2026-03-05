@@ -98,10 +98,11 @@ def _kafka_producer_config() -> dict:
     if security in ("SSL", "SASL_SSL"):
         ca = os.environ.get("KAFKA_SSL_CA_LOCATION") or os.environ.get("KAFKA_SSL_CAFILE")
         if not ca and os.environ.get("KAFKA_SSL_CA_CERT"):
-            # For PaaS (e.g. Render): cert in env var; write to temp file
+            # For PaaS (e.g. Render): cert in env var; write to temp file. Normalize \n if pasted as literal.
             import tempfile
+            ca_content = os.environ["KAFKA_SSL_CA_CERT"].replace("\\n", "\n")
             with tempfile.NamedTemporaryFile(mode="w", suffix=".pem", delete=False) as f:
-                f.write(os.environ["KAFKA_SSL_CA_CERT"])
+                f.write(ca_content)
                 ca = f.name
         if ca:
             cfg["ssl.ca.location"] = ca
@@ -110,13 +111,15 @@ def _kafka_producer_config() -> dict:
         key = os.environ.get("KAFKA_SSL_KEY_LOCATION") or os.environ.get("KAFKA_SSL_KEYFILE")
         if not cert and os.environ.get("KAFKA_SSL_CERT_CERT"):
             import tempfile
+            cert_content = os.environ["KAFKA_SSL_CERT_CERT"].replace("\\n", "\n")
             with tempfile.NamedTemporaryFile(mode="w", suffix=".pem", delete=False) as f:
-                f.write(os.environ["KAFKA_SSL_CERT_CERT"])
+                f.write(cert_content)
                 cert = f.name
         if not key and os.environ.get("KAFKA_SSL_KEY_CERT"):
             import tempfile
+            key_content = os.environ["KAFKA_SSL_KEY_CERT"].replace("\\n", "\n")
             with tempfile.NamedTemporaryFile(mode="w", suffix=".pem", delete=False) as f:
-                f.write(os.environ["KAFKA_SSL_KEY_CERT"])
+                f.write(key_content)
                 key = f.name
         if cert:
             cfg["ssl.certificate.location"] = cert
