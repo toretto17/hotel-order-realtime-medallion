@@ -26,6 +26,14 @@ from pyspark.sql import functions as F
 from streaming.config_loader import get_paths_config, load_config
 
 
+def _path_has_parquet(path_str: str) -> bool:
+    """Return True if the directory exists and contains at least one .parquet file."""
+    p = Path(path_str)
+    if not p.exists():
+        return False
+    return any(p.rglob("*.parquet"))
+
+
 def register_silver_views(spark: SparkSession, paths: dict) -> None:
     """Read Silver Parquet with mergeSchema, add order_date for fact_orders, create temp views."""
     silver_orders_path = paths.get("silver_orders")
@@ -33,6 +41,14 @@ def register_silver_views(spark: SparkSession, paths: dict) -> None:
 
     if not silver_orders_path:
         raise ValueError("paths.silver_orders is required")
+
+    if not _path_has_parquet(silver_orders_path):
+        print(
+            f"\n[Gold] WARNING: Silver path '{silver_orders_path}' does not exist or has no data.\n"
+            "       Run Bronze + Silver first (make pipeline) after producing orders.\n"
+            "       Skipping Gold — nothing to aggregate.\n"
+        )
+        raise SystemExit(0)
 
     # mergeSchema: older and newer Silver files may have different columns (e.g. new optional fields)
     orders_df = (

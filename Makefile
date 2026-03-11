@@ -2,7 +2,7 @@
 # Use from project root. First time: make install. Configure .env with Aiven credentials (see docs/AIVEN_SETUP_STEP_BY_STEP.md).
 # Then: make run (or make wait-kafka + make topics-create) → make bronze (T1), make produce or make web (T2) → make silver → make gold
 
-.PHONY: install check clean clean-data clean-bronze clean-silver clean-gold wait-kafka topics-create bronze silver gold produce produce-orders produce-orders-reset web run stop test-kafka help
+.PHONY: install check clean clean-data clean-bronze clean-silver clean-gold wait-kafka topics-create bronze silver gold pipeline produce produce-orders produce-orders-reset web run stop test-kafka check-order help
 
 # Default target
 help:
@@ -28,9 +28,11 @@ help:
 	@echo "  make bronze           Run Bronze streaming job (Spark; keep running in one terminal)"
 	@echo "  make silver           Run Silver job (reads Bronze Parquet; writes Silver)"
 	@echo "  make gold             Run Gold batch (reads Silver; writes daily_sales, customer_360, restaurant_metrics)"
+	@echo "  make pipeline         Run full pipeline once: Bronze → Silver → Gold (micro-batch each; no long-running jobs)"
 	@echo "  make produce          Produce one test order to Aiven Kafka"
 	@echo "  make produce-orders [N=100]  Produce N orders; order_id continues from last run"
 	@echo "  make produce-orders-reset [N=100]  Produce N orders starting from order_id 1"
+	@echo "  make check-order [ID=<order_id>]   Trace an order through Silver + Gold layers"
 	@echo "  make web              Run hotel ordering website (localhost:5000); orders → Aiven Kafka → Bronze"
 	@echo ""
 	@echo "Checks:"
@@ -45,6 +47,9 @@ help:
 	@echo "  6. make produce       # Terminal 2 — or make web to use the website"
 	@echo "  7. make silver        # after Bronze has data"
 	@echo "  8. make gold          # after Silver has data"
+	@echo ""
+	@echo "One-shot pipeline (Bronze → Silver → Gold in one command):"
+	@echo "  make pipeline        # runs each job once (micro-batch) then exits; good for cron/scheduling"
 	@echo ""
 	@echo "Quick start (after .env is set):"
 	@echo "  make run              Same as: make wait-kafka + make topics-create; then run make bronze (T1) and make produce or make web (T2)"
@@ -89,6 +94,11 @@ gold:
 	@chmod +x scripts/run_gold.sh 2>/dev/null || true
 	./scripts/run_gold.sh
 
+# Run full pipeline once: Bronze (micro-batch) → Silver (micro-batch) → Gold. Requires .env (Aiven Kafka).
+pipeline:
+	@chmod +x scripts/run_pipeline.sh 2>/dev/null || true
+	./scripts/run_pipeline.sh
+
 # Produce one test order to Aiven Kafka.
 produce:
 	python3 scripts/produce_test_order.py
@@ -100,6 +110,11 @@ produce-orders:
 # Produce N orders starting from 1 (ignore saved state).
 produce-orders-reset:
 	python3 scripts/produce_orders.py $(or $(N),10) --reset
+
+# Trace a single order through Silver and Gold layers.
+# Usage: make check-order ID=web-a054ff91a6e5
+check-order:
+	python3 scripts/check_order.py $(or $(ID),web-a054ff91a6e5)
 
 # Run hotel ordering website. Orders go to Aiven Kafka; run Bronze in another terminal to process.
 web:

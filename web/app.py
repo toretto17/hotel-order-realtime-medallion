@@ -46,38 +46,38 @@ def _load_env():
             pass
 _load_env()
 
-# Menu: all vegetarian. Each item has a unique image URL; images chosen to match the dish where possible.
-# Pipeline uses item_id, name, category, unit_price. Image URLs: Unsplash (w=500&h=350&fit=crop).
+# Menu: all vegetarian. Each item has a dish-specific image (Unsplash, w=500&h=350&fit=crop).
+# Pipeline uses item_id, name, category, unit_price. Images chosen to match each dish.
 # Categories: breakfast, south_indian, north_indian, gujarati, beverage, dessert.
 MENU = [
-    # Breakfast — idli, dosa, vada, upma, poha (each unique image)
+    # Breakfast — idli, dosa, vada, upma, poha
     {"item_id": "I1", "name": "Idli (3 pcs)", "category": "breakfast", "unit_price": 6.0, "image": "https://images.unsplash.com/photo-1589301760014-d929f3989dfb?w=500&h=350&fit=crop"},
     {"item_id": "I2", "name": "Dosa (plain)", "category": "breakfast", "unit_price": 8.0, "image": "https://images.unsplash.com/photo-1630380068630-8a35d42b1e0e?w=500&h=350&fit=crop"},
     {"item_id": "I3", "name": "Medu Vada (3 pcs)", "category": "breakfast", "unit_price": 7.0, "image": "https://images.unsplash.com/photo-1604329760661-e71dc83f2b26?w=500&h=350&fit=crop"},
     {"item_id": "I4", "name": "Upma", "category": "breakfast", "unit_price": 5.0, "image": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&h=350&fit=crop"},
     {"item_id": "I5", "name": "Poha", "category": "breakfast", "unit_price": 5.0, "image": "https://images.unsplash.com/photo-1546069901-d5bfd2c0b7a6?w=500&h=350&fit=crop"},
-    # South Indian — sambar, curd rice, masala dosa, uttapam (each unique)
+    # South Indian — sambar, curd rice, masala dosa, uttapam
     {"item_id": "I6", "name": "Sambar", "category": "south_indian", "unit_price": 4.0, "image": "https://images.unsplash.com/photo-1547592166-23ac45744acd?w=500&h=350&fit=crop"},
     {"item_id": "I7", "name": "Curd Rice", "category": "south_indian", "unit_price": 7.0, "image": "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=500&h=350&fit=crop"},
     {"item_id": "I8", "name": "Masala Dosa", "category": "south_indian", "unit_price": 10.0, "image": "https://images.unsplash.com/photo-1630380068630-8a35d42b1e0e?w=500&h=350&fit=crop"},
     {"item_id": "I9", "name": "Uttapam", "category": "south_indian", "unit_price": 9.0, "image": "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=500&h=350&fit=crop"},
-    # North Indian — paneer, dal, biryani, naan, paratha (each unique)
+    # North Indian — paneer, dal, biryani, naan, paratha
     {"item_id": "I10", "name": "Paneer Tikka", "category": "north_indian", "unit_price": 14.0, "image": "https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=500&h=350&fit=crop"},
     {"item_id": "I11", "name": "Dal Makhani", "category": "north_indian", "unit_price": 10.0, "image": "https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=500&h=350&fit=crop"},
     {"item_id": "I12", "name": "Veg Biryani", "category": "north_indian", "unit_price": 12.0, "image": "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=500&h=350&fit=crop"},
     {"item_id": "I13", "name": "Butter Naan", "category": "north_indian", "unit_price": 5.0, "image": "https://images.unsplash.com/photo-1601050690597-df0568f70950?w=500&h=350&fit=crop"},
     {"item_id": "I14", "name": "Aloo Paratha", "category": "north_indian", "unit_price": 8.0, "image": "https://images.unsplash.com/photo-1596797038530-2c107229654b?w=500&h=350&fit=crop"},
-    # Gujarati — dhokla, thepla, fafda, khandvi (each unique; distinct from breakfast/south)
+    # Gujarati — dhokla, thepla, fafda, khandvi
     {"item_id": "I15", "name": "Dhokla (4 pcs)", "category": "gujarati", "unit_price": 7.0, "image": "https://images.unsplash.com/photo-1599020793233-4301366c6754?w=500&h=350&fit=crop"},
     {"item_id": "I16", "name": "Thepla (3 pcs)", "category": "gujarati", "unit_price": 6.0, "image": "https://images.unsplash.com/photo-1596797038530-2c107229654b?w=500&h=350&fit=crop"},
     {"item_id": "I17", "name": "Fafda", "category": "gujarati", "unit_price": 6.0, "image": "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=500&h=350&fit=crop"},
     {"item_id": "I18", "name": "Khandvi", "category": "gujarati", "unit_price": 8.0, "image": "https://images.unsplash.com/photo-1551183053-bf91a1d81141?w=500&h=350&fit=crop"},
-    # Beverage — chai, lassi, buttermilk, juice (each unique)
+    # Beverage — chai, lassi, buttermilk, juice
     {"item_id": "I19", "name": "Chai", "category": "beverage", "unit_price": 3.0, "image": "https://images.unsplash.com/photo-1571934811356-5cc061b6821f?w=500&h=350&fit=crop"},
     {"item_id": "I20", "name": "Lassi", "category": "beverage", "unit_price": 5.0, "image": "https://images.unsplash.com/photo-1622597467836-f3285f2131b8?w=500&h=350&fit=crop"},
     {"item_id": "I21", "name": "Buttermilk", "category": "beverage", "unit_price": 4.0, "image": "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=500&h=350&fit=crop"},
     {"item_id": "I22", "name": "Fresh Juice", "category": "beverage", "unit_price": 6.0, "image": "https://images.unsplash.com/photo-1621506289937-a8e4df240d0b?w=500&h=350&fit=crop"},
-    # Dessert — gulab jamun, gajar halwa, kheer (each unique)
+    # Dessert — gulab jamun, gajar halwa, kheer
     {"item_id": "I23", "name": "Gulab Jamun (2 pcs)", "category": "dessert", "unit_price": 7.0, "image": "https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=500&h=350&fit=crop"},
     {"item_id": "I24", "name": "Gajar Halwa", "category": "dessert", "unit_price": 8.0, "image": "https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=500&h=350&fit=crop"},
     {"item_id": "I25", "name": "Kheer", "category": "dessert", "unit_price": 6.0, "image": "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=500&h=350&fit=crop"},
@@ -234,18 +234,20 @@ def _kafka_producer_config() -> dict:
                 ca = f.name
         if ca:
             cfg["ssl.ca.location"] = ca
-        # Client certificate (e.g. Aiven service.cert + service.key). On Render use KAFKA_SSL_CERT_CERT / KAFKA_SSL_KEY_CERT (content).
+        # Client certificate (e.g. Aiven service.cert + service.key). On Render use KAFKA_SSL_CERT / KAFKA_SSL_KEY (inline PEM content).
         cert = os.environ.get("KAFKA_SSL_CERT_LOCATION") or os.environ.get("KAFKA_SSL_CERTFILE")
         key = os.environ.get("KAFKA_SSL_KEY_LOCATION") or os.environ.get("KAFKA_SSL_KEYFILE")
-        if not cert and os.environ.get("KAFKA_SSL_CERT_CERT"):
+        cert_content_env = os.environ.get("KAFKA_SSL_CERT") or os.environ.get("KAFKA_SSL_CERT_CERT")
+        key_content_env = os.environ.get("KAFKA_SSL_KEY") or os.environ.get("KAFKA_SSL_KEY_CERT")
+        if not cert and cert_content_env:
             import tempfile
-            cert_content = os.environ["KAFKA_SSL_CERT_CERT"].replace("\\n", "\n")
+            cert_content = cert_content_env.replace("\\n", "\n")
             with tempfile.NamedTemporaryFile(mode="w", suffix=".pem", delete=False) as f:
                 f.write(cert_content)
                 cert = f.name
-        if not key and os.environ.get("KAFKA_SSL_KEY_CERT"):
+        if not key and key_content_env:
             import tempfile
-            key_content = os.environ["KAFKA_SSL_KEY_CERT"].replace("\\n", "\n")
+            key_content = key_content_env.replace("\\n", "\n")
             with tempfile.NamedTemporaryFile(mode="w", suffix=".pem", delete=False) as f:
                 f.write(key_content)
                 key = f.name

@@ -155,6 +155,27 @@ def create_bronze_stream(spark: SparkSession, config: dict) -> None:
     print(f"Checkpoint: {checkpoint_path}")
     query.awaitTermination()
 
+    # -------------------------------------------------------------------------
+    # 4. Report how many rows were actually written this run
+    # -------------------------------------------------------------------------
+    total_rows = sum(int(p.get("numInputRows", 0)) for p in (query.recentProgress or []))
+
+    # Write signal file so run_pipeline.sh knows whether to continue to Silver
+    signal_file = Path(checkpoint_path) / ".last_run_rows"
+    signal_file.parent.mkdir(parents=True, exist_ok=True)
+    signal_file.write_text(str(total_rows))
+
+    divider = "─" * 62
+    if total_rows == 0:
+        print(f"\n{divider}")
+        print("  Bronze: no new messages found in Kafka topic.")
+        print("  The topic is fully up to date — nothing written to Bronze.")
+        print(f"{divider}\n")
+    else:
+        print(f"\n{divider}")
+        print(f"  Bronze: wrote {total_rows} new row(s) → {bronze_path}")
+        print(f"{divider}\n")
+
 
 def main() -> None:
     config = load_config()

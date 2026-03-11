@@ -121,6 +121,11 @@
             <div class="menu-grid">
               {% for item in items_in_cat %}
               <article class="menu-card" data-item-id="{{ item.item_id }}">
+                {% if item.image %}
+                <div class="menu-card-image-wrap">
+                  <img src="{{ item.image }}" alt="{{ item.name }}" class="menu-card-image" loading="lazy" onerror="this.style.display='none'">
+                </div>
+                {% endif %}
                 <div class="menu-card-body">
                   <h4 class="menu-card-title">{{ item.name }}</h4>
                   <span class="menu-card-price">${{ "%.2f"|format(item.unit_price) }}</span>
