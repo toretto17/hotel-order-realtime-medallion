@@ -56,7 +56,17 @@ echo ""
 
 # ── 1/3 Bronze ───────────────────────────────────────────────────────────────
 echo "--- 1/3 Bronze (consume available Kafka messages, then exit) ---"
-./scripts/run_bronze.sh
+if ! ./scripts/run_bronze.sh; then
+  echo ""
+  echo "  ┌─────────────────────────────────────────────────────────────┐"
+  echo "  │  Bronze failed. Silver and Gold were NOT run.                │"
+  echo "  │  No data was written to Parquet or Postgres for this run.   │"
+  echo "  │                                                             │"
+  echo "  │  Fix the error above, then re-run:  make pipeline           │"
+  echo "  └─────────────────────────────────────────────────────────────┘"
+  echo ""
+  exit 1
+fi
 echo ""
 
 BRONZE_ROWS=$(_read_signal "$BRONZE_SIGNAL")
@@ -72,7 +82,16 @@ fi
 # here. Skipping Silver based on Bronze = 0 would cause permanent data loss
 # for any batch that Bronze wrote but Silver didn't fully commit.
 echo "--- 2/3 Silver (process new Bronze data, then exit) ---"
-./scripts/run_silver.sh
+if ! ./scripts/run_silver.sh; then
+  echo ""
+  echo "  ┌─────────────────────────────────────────────────────────────┐"
+  echo "  │  Silver failed. Gold was NOT run.                           │"
+  echo "  │  Bronze data was written; Silver/Postgres may be partial.   │"
+  echo "  │  Fix the error above, then re-run:  make pipeline           │"
+  echo "  └─────────────────────────────────────────────────────────────┘"
+  echo ""
+  exit 1
+fi
 echo ""
 
 SILVER_ROWS=$(_read_signal "$SILVER_SIGNAL")
@@ -84,7 +103,16 @@ fi
 
 # ── 3/3 Gold ─────────────────────────────────────────────────────────────────
 echo "--- 3/3 Gold (batch: aggregate Silver → Gold tables) ---"
-./scripts/run_gold.sh
+if ! ./scripts/run_gold.sh; then
+  echo ""
+  echo "  ┌─────────────────────────────────────────────────────────────┐"
+  echo "  │  Gold failed. Bronze and Silver (and their Postgres sync)    │"
+  echo "  │  completed; Gold Parquet/Postgres may be partial or missing.│"
+  echo "  │  Fix the error above, then re-run:  make pipeline           │"
+  echo "  └─────────────────────────────────────────────────────────────┘"
+  echo ""
+  exit 1
+fi
 echo ""
 
 echo "=== Pipeline done. ==="

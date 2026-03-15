@@ -65,6 +65,7 @@ from streaming.config_loader import (
     get_streaming_config,
     load_config,
 )
+from streaming.postgres_sink import is_enabled as postgres_enabled, write_silver_items_batch, write_silver_orders_batch
 
 # ---------------------------------------------------------------------------
 # Schemas
@@ -402,11 +403,13 @@ def create_silver_stream(spark: SparkSession, config: dict) -> None:
 
     # -------------------------------------------------------------------------
     # 1. Read Bronze as a file stream (only new files since last checkpoint).
+    #    recursiveFileLookup=true so partition subdirs (e.g. _ingestion_date=...) are scanned.
     # -------------------------------------------------------------------------
     bronze_stream = (
         spark.readStream
         .schema(BRONZE_PARQUET_SCHEMA)
         .format("parquet")
+        .option("recursiveFileLookup", "true")
         .load(bronze_path)
     )
 
@@ -435,6 +438,10 @@ def create_silver_stream(spark: SparkSession, config: dict) -> None:
             new_df=batch_df,
             silver_path=silver_orders_path,
         )
+        # Postgres sync: only after Parquet write succeeds. Fail batch if Postgres fails (no checkpoint).
+        if postgres_enabled(config):
+            orders_with_date = batch_df.withColumn("order_date", F.to_date(F.col("order_timestamp")))
+            write_silver_orders_batch(orders_with_date, config)
 
     write_orders = (
         fact_orders_stream.writeStream
@@ -449,17 +456,23 @@ def create_silver_stream(spark: SparkSession, config: dict) -> None:
     print(f"[Silver] fact_orders stream started.")
     print(f"  Bronze path : {bronze_path}")
     print(f"  Silver path : {silver_orders_path} (partitioned by order_date)")
+    if postgres_enabled(config):
+        print("  Postgres sync: enabled (medallion.silver_orders, silver_order_items)")
     print(f"  Checkpoint  : {checkpoint_orders}")
     print(f"  Trigger     : {'availableNow' if use_available_now else trigger_interval}")
 
+    query_orders.awaitTermination()
+
     # -------------------------------------------------------------------------
-    # 4. fact_order_items: foreachBatch upsert (partition-aware, per order line).
+    # 4. fact_order_items: run after orders complete (sequential to avoid NPE
+    #    when process exits while the second stream is still running).
     # -------------------------------------------------------------------------
     if silver_order_items_path:
         bronze_stream2 = (
             spark.readStream
             .schema(BRONZE_PARQUET_SCHEMA)
             .format("parquet")
+            .option("recursiveFileLookup", "true")
             .load(bronze_path)
         )
         parsed_stream2 = _parse_orders(bronze_stream2)
@@ -487,6 +500,10 @@ def create_silver_stream(spark: SparkSession, config: dict) -> None:
                 new_items=batch_df,
                 silver_items_path=silver_order_items_path,
             )
+            # Postgres sync: only after Parquet write succeeds.
+            if postgres_enabled(config):
+                items_with_date = batch_df.withColumn("order_date", F.to_date(F.col("order_timestamp")))
+                write_silver_items_batch(items_with_date, config)
 
         write_items = (
             items_stream.writeStream
@@ -494,13 +511,12 @@ def create_silver_stream(spark: SparkSession, config: dict) -> None:
             .option("checkpointLocation", checkpoint_order_items)
         )
         if use_available_now:
-            write_items.trigger(availableNow=True).start()
+            query_items = write_items.trigger(availableNow=True).start()
         else:
-            write_items.trigger(processingTime=trigger_interval).start()
+            query_items = write_items.trigger(processingTime=trigger_interval).start()
 
         print(f"[Silver] fact_order_items stream started → {silver_order_items_path}")
-
-    query_orders.awaitTermination()
+        query_items.awaitTermination()
 
     # -------------------------------------------------------------------------
     # 5. Report input rows processed and signal the pipeline.

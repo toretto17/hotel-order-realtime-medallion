@@ -2,7 +2,7 @@
 # Use from project root. First time: make install. Configure .env with Aiven credentials (see docs/AIVEN_SETUP_STEP_BY_STEP.md).
 # Then: make run (or make wait-kafka + make topics-create) → make bronze (T1), make produce or make web (T2) → make silver → make gold
 
-.PHONY: install check clean clean-data clean-bronze clean-silver clean-gold wait-kafka topics-create bronze silver gold pipeline produce produce-orders produce-orders-reset web run stop test-kafka check-order help
+.PHONY: install check clean clean-data clean-bronze clean-silver clean-gold wait-kafka topics-create bronze silver gold pipeline produce produce-orders produce-orders-reset web run stop test-kafka check-order postgres-schema postgres-backfill postgres-truncate vm-run help
 
 # Default target
 help:
@@ -29,11 +29,18 @@ help:
 	@echo "  make silver           Run Silver job (reads Bronze Parquet; writes Silver)"
 	@echo "  make gold             Run Gold batch (reads Silver; writes daily_sales, customer_360, restaurant_metrics)"
 	@echo "  make pipeline         Run full pipeline once: Bronze → Silver → Gold (micro-batch each; no long-running jobs)"
+	@echo "  ./run                 Same as make pipeline (one command from repo root; use this on VM after SSH)"
+	@echo "  make vm-run           SSH into VM and run pipeline (one command from Mac; set VM_HOST and SSH_KEY in .env)"
 	@echo "  make produce          Produce one test order to Aiven Kafka"
 	@echo "  make produce-orders [N=100]  Produce N orders; order_id continues from last run"
 	@echo "  make produce-orders-reset [N=100]  Produce N orders starting from order_id 1"
 	@echo "  make check-order [ID=<order_id>]   Trace an order through Silver + Gold layers"
 	@echo "  make web              Run hotel ordering website (localhost:5000); orders → Aiven Kafka → Bronze"
+	@echo ""
+	@echo "Postgres (optional — Bronze/Silver/Gold sync):"
+	@echo "  make postgres-schema     Create medallion schema + tables (run once; set POSTGRES_JDBC_URL in .env). See docs/POSTGRES_SETUP.md"
+	@echo "  make postgres-backfill   Backfill Postgres from existing Parquet (use if Bronze Postgres is empty but Parquet has data). Optional: postgres-backfill ALL=1 for full backfill"
+	@echo "  make postgres-truncate   Truncate all medallion tables (full reset). Use with make clean-data to start completely fresh. Requires: make postgres-truncate YES=1"
 	@echo ""
 	@echo "Checks:"
 	@echo "  make check            Run lesson1 + lesson2 checks (config, schema, Spark)"
@@ -49,7 +56,9 @@ help:
 	@echo "  8. make gold          # after Silver has data"
 	@echo ""
 	@echo "One-shot pipeline (Bronze → Silver → Gold in one command):"
-	@echo "  make pipeline        # runs each job once (micro-batch) then exits; good for cron/scheduling"
+	@echo "  make pipeline        # or ./run from repo root (VM: ssh in, cd repo, ./run)"
+	@echo "  make vm-run          # from Mac: SSH to VM and run pipeline (one command; set VM_HOST, SSH_KEY in .env)"
+	@echo "  Cron on VM: use scripts/cron_run.sh in crontab; pipeline then runs every 15–30 min automatically"
 	@echo ""
 	@echo "Quick start (after .env is set):"
 	@echo "  make run              Same as: make wait-kafka + make topics-create; then run make bronze (T1) and make produce or make web (T2)"
@@ -57,7 +66,7 @@ help:
 	@echo "Stop: Ctrl+C in each terminal running bronze, silver, or web. No local Kafka to stop."
 
 install:
-	@chmod +x scripts/setup.sh scripts/run_bronze.sh 2>/dev/null || true
+	@chmod +x scripts/setup.sh scripts/run_bronze.sh scripts/run_pipeline.sh scripts/cron_run.sh scripts/ssh_run_pipeline.sh run 2>/dev/null || true
 	./scripts/setup.sh
 
 check:
@@ -99,6 +108,11 @@ pipeline:
 	@chmod +x scripts/run_pipeline.sh 2>/dev/null || true
 	./scripts/run_pipeline.sh
 
+# From Mac: SSH to VM and run pipeline (one command). Set VM_HOST and SSH_KEY in .env.
+vm-run:
+	@chmod +x scripts/ssh_run_pipeline.sh 2>/dev/null || true
+	./scripts/ssh_run_pipeline.sh
+
 # Produce one test order to Aiven Kafka.
 produce:
 	python3 scripts/produce_test_order.py
@@ -115,6 +129,18 @@ produce-orders-reset:
 # Usage: make check-order ID=web-a054ff91a6e5
 check-order:
 	python3 scripts/check_order.py $(or $(ID),web-a054ff91a6e5)
+
+# Create Postgres schema and tables (run once). Requires POSTGRES_JDBC_URL in .env. See docs/POSTGRES_SETUP.md.
+postgres-schema:
+	python3 scripts/run_postgres_schema.py
+
+# Backfill Postgres from existing Parquet. Use when Bronze Postgres is empty but Parquet has data (e.g. data ingested before Postgres was set up). Default: Bronze only. ALL=1 → Bronze + Silver + Gold.
+postgres-backfill:
+	python3 scripts/backfill_postgres_from_parquet.py $(if $(ALL),--all,--bronze)
+
+# Truncate all medallion tables (full reset). Run after make clean-data to start completely fresh. Requires YES=1 to skip confirmation.
+postgres-truncate:
+	python3 scripts/truncate_postgres_medallion.py $(if $(YES),--yes,)
 
 # Run hotel ordering website. Orders go to Aiven Kafka; run Bronze in another terminal to process.
 web:

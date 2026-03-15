@@ -2,7 +2,8 @@
 # Required: .env with KAFKA_BOOTSTRAP_SERVERS and SSL cert paths (see .env.example and docs/AIVEN_SETUP_STEP_BY_STEP.md)
 # spark_packages: used by scripts/run_bronze.sh (Kafka connector; not in PyPI)
 
-spark_packages: "org.apache.spark:spark-sql-kafka-0-10_2.13:4.0.2"  # Spark 4.x; for 3.x use spark-sql-kafka-0-10_2.12:3.5.0
+# Standardized on Spark 3.5 everywhere (local, Oracle VM, CI). Install Spark 3.5.x and use this connector.
+spark_packages: "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0"
 
 kafka:
   bootstrap_servers: "${KAFKA_BOOTSTRAP_SERVERS}"
@@ -39,7 +40,14 @@ paths:
   gold_restaurant_metrics: "${BASE_PATH}/gold/restaurant_metrics"
 
 postgres:
-  # Optional sink for serving layer
+  # Bronze, Silver, Gold sync (same DB for all layers). Set POSTGRES_JDBC_URL in .env.
   jdbc_url: "${POSTGRES_JDBC_URL}"
-  sink_table_orders: "analytics.daily_sales"
+  schema: "medallion"
+  tables:
+    bronze_orders: "bronze_orders"
+    silver_orders: "silver_orders"
+    silver_order_items: "silver_order_items"
+    gold_daily_sales: "gold_daily_sales"
+    gold_customer_360: "gold_customer_360"
+    gold_restaurant_metrics: "gold_restaurant_metrics"
   batch_size: 1000

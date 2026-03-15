@@ -48,8 +48,8 @@ def main() -> None:
         sys.exit(0)
 
     print("\nTo run the Bronze job (requires Java, Kafka, topic 'orders', and --packages):")
-    print("  BASE_PATH=/tmp/medallion spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.13:4.0.2 streaming/bronze_orders.py")
-    print("One-shot: TRIGGER_AVAILABLE_NOW=1 BASE_PATH=/tmp/medallion spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.13:4.0.2 streaming/bronze_orders.py")
+    print("  BASE_PATH=/tmp/medallion spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0 streaming/bronze_orders.py")
+    print("One-shot: TRIGGER_AVAILABLE_NOW=1 BASE_PATH=/tmp/medallion spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0 streaming/bronze_orders.py")
     print("\nLesson 2 config check passed.")
 
 

@@ -31,6 +31,7 @@ from streaming.config_loader import (
     get_streaming_config,
     load_config,
 )
+from streaming.postgres_sink import is_enabled as postgres_enabled, write_bronze_batch
 
 
 def create_bronze_stream(spark: SparkSession, config: dict) -> None:
@@ -137,14 +138,21 @@ def create_bronze_stream(spark: SparkSession, config: dict) -> None:
         trigger_interval = streaming_cfg.get("trigger_interval", "1 minute")
 
     # -------------------------------------------------------------------------
-    # 3. Write to Bronze (Parquet) with checkpoint
+    # 3. Write to Bronze (Parquet + optional Postgres) with checkpoint
     # -------------------------------------------------------------------------
+    pg_enabled = postgres_enabled(config)
+
+    def _foreach_batch(batch_df, batch_id):  # noqa: B008
+        # Parquet first (same as before)
+        batch_df.write.mode("append").partitionBy("_ingestion_date").parquet(bronze_path)
+        # Postgres sync (idempotent: ON CONFLICT DO NOTHING)
+        if pg_enabled:
+            write_bronze_batch(batch_df, config)
+
     write_stream = (
         stream.writeStream.outputMode("append")
-        .format("parquet")
-        .option("path", bronze_path)
+        .foreachBatch(_foreach_batch)
         .option("checkpointLocation", checkpoint_path)
-        .partitionBy("_ingestion_date")
     )
     if use_available_now:
         query = write_stream.trigger(availableNow=True).start()
@@ -152,6 +160,8 @@ def create_bronze_stream(spark: SparkSession, config: dict) -> None:
         query = write_stream.trigger(processingTime=trigger_interval).start()
 
     print(f"Bronze job started: reading from Kafka topic '{topic}', writing to {bronze_path}")
+    if pg_enabled:
+        print("  Postgres sync: enabled (medallion.bronze_orders)")
     print(f"Checkpoint: {checkpoint_path}")
     query.awaitTermination()
 

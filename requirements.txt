@@ -7,8 +7,8 @@
 #   - Java 11+ (for Spark): brew install openjdk@17; set JAVA_HOME. See docs/SETUP_AND_RUN.md §4.
 #   - Spark Kafka connector: in config/pipeline.yaml (spark_packages); used by scripts/run_bronze.sh.
 
-# --- Core: Spark & pipeline ---
-pyspark>=3.4.0
+# --- Core: Spark & pipeline (standardized on Spark 3.5) ---
+pyspark>=3.5.0,<4.0.0
 confluent-kafka>=2.3.0
 pyyaml>=6.0
 python-dotenv>=1.0.0

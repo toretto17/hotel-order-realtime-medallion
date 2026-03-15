@@ -21,11 +21,7 @@ This doc covers: **Postgres** (queryable Bronze/Silver/Gold), **free website hos
 - You want a **serving layer**: e.g. Gold tables (`daily_sales`, `customer_360`, `restaurant_metrics`) in Postgres so a BI tool or API can read them.
 - You need **ACID** and **indexes** for low-latency lookups (e.g. “show this customer’s orders”).
 
-**Next steps (future goal):**
-- Add a **Gold → Postgres** sink (batch or streaming): after Gold job runs, write/upsert `daily_sales`, `customer_360`, `restaurant_metrics` to Postgres. Config already has `postgres` section in `pipeline.yaml` for this.
-- Optionally: **Silver → Postgres** for queryable order/order_items tables if you want to query cleaned data without Spark.
-
-So: **Bronze/Silver/Gold stay in Parquet for processing.** Postgres is for **queryable storage** (mainly Gold, optionally Silver), not for replacing Parquet.
+**Status:** ✅ **Done.** Bronze, Silver, and Gold all sync to Postgres (`medallion.bronze_orders`, `silver_orders`, `silver_order_items`, `gold_daily_sales`, `gold_customer_360`, `gold_restaurant_metrics`). Use `make postgres-schema` once, then `make pipeline`; optional `make postgres-backfill` if Bronze Parquet existed before Postgres was set up. See **docs/POSTGRES_SETUP_STEP_BY_STEP.md**.
 
 ---
 
@@ -37,9 +33,7 @@ So: **Bronze/Silver/Gold stay in Parquet for processing.** Postgres is for **que
 - **Free subdomain:** `your-app.onrender.com` is a valid, free URL. No custom domain needed.
 - **Custom domain (e.g. `orders.myhotel.com`):** You need to **own** the domain (purchase from a registrar, or use a free registrar if available). Render allows **adding a custom domain** on the free tier: in the Render dashboard → your Web Service → Settings → Custom Domain → add your domain and follow the CNAME/DNS steps. The **hosting** stays free; the **domain** may cost a few dollars per year unless you use a free option (e.g. Freenom historically; or GitHub Pages with a free subdomain like `username.github.io`).
 
-**Next steps (future goal):**
-- Deploy website to Render (or similar) using **docs/FREE_HOSTING.md**.
-- Use the free Render subdomain, or attach a custom domain you own for a “proper” URL.
+**Status:** ✅ **Done.** Website is deployed on Render (free tier); live URL (e.g. `your-app.onrender.com`). Optional: attach a custom domain you own via Render → Settings → Custom Domain. See **docs/RENDER_WEBSITE_HOSTING_STEP_BY_STEP.md** and **docs/FREE_HOSTING.md**.
 
 ---
 
@@ -60,9 +54,7 @@ So: **Bronze/Silver/Gold stay in Parquet for processing.** Postgres is for **que
 - **Option A — Event-driven orchestration:** When a message lands in Kafka (or when a web order is placed), trigger a **pipeline run**: run Bronze (micro-batch: read new messages, write to Bronze, exit) → then trigger Silver (read new Bronze, write Silver, exit) → then trigger Gold (read Silver, write Gold, exit). Tools: **Airflow**, **Prefect**, **Dagster**, or a simple **cron + script** that runs every 1–5 minutes.
 - **Option B — Short-interval streaming:** Keep Bronze as a **streaming** job but with a **short trigger** (e.g. every 10–30 seconds or “availableNow”). It stays running but processes in small batches; then a separate scheduled job runs Silver and Gold every 1–5 min. Lower “hands-off” than full trigger chain but still automated.
 
-**Next steps (future goal):**
-- Add an **orchestrator** (e.g. Airflow DAG or a single script) that: (1) runs Bronze in micro-batch mode (process new Kafka messages, then exit), (2) runs Silver on new Bronze data, (3) runs Gold on Silver. Schedule it (e.g. every 2–5 min) or trigger it on “new data” (e.g. Kafka consumer lag or webhook).
-- Document **micro-batch** mode for Bronze (e.g. `TRIGGER_AVAILABLE_NOW=1` or a short trigger interval) so each run processes only available messages and exits.
+**Status:** ✅ **Done.** Single command **`make pipeline`** runs Bronze (micro-batch) → Silver → Gold in sequence, then exits. Bronze uses `TRIGGER_AVAILABLE_NOW=1` so it processes available Kafka messages and stops; Silver and Gold run once each. Optional: schedule `make pipeline` via Render Cron (or cron on a server) every few minutes for hands-off processing. See **scripts/run_pipeline.sh**.
 
 ---
 
@@ -83,14 +75,33 @@ So: **Bronze/Silver/Gold stay in Parquet for processing.** Postgres is for **que
 
 ---
 
-## 5. Summary: next steps and future goals (checklist)
+## 5. Summary: goals and vision — achieved vs remaining
 
-| Goal | What to do | Doc / reference |
-|------|------------|------------------|
-| **Postgres for queryable tables** | Add Gold (and optionally Silver) sink to Postgres; use for dashboards/APIs. | `config/pipeline.yaml` has `postgres` section; add write step in Gold job or a separate sync job. |
-| **Free website + domain** | Deploy to Render; use free subdomain or attach custom domain you own. | **docs/FREE_HOSTING.md** |
-| **Orchestrated pipeline** | Automate Bronze → Silver → Gold (triggered/micro-batch); run via Airflow/Prefect/cron or event. | This doc §3; add DAG or `scripts/run_pipeline_batch.sh`. |
-| **Streaming vs micro-batch** | Choose: long-running Bronze (low latency) or triggered Bronze (cost-effective); document trigger interval and latency. | This doc §4 |
-| **Bronze micro-batch mode** | Support “process available messages then exit” (e.g. `TRIGGER_AVAILABLE_NOW=1`) for orchestrated runs. | Already in place via env; document in SETUP_AND_RUN. |
+| Goal | Status | Notes |
+|------|--------|------|
+| **Postgres for queryable tables** | ✅ Done | Bronze, Silver, Gold all sync to Postgres. Schema: `make postgres-schema`. Backfill: `make postgres-backfill`. Doc: **docs/POSTGRES_SETUP_STEP_BY_STEP.md**. |
+| **Free website + domain** | ✅ Done | Website on Render (free); live URL. Custom domain optional. Doc: **docs/RENDER_WEBSITE_HOSTING_STEP_BY_STEP.md**. |
+| **Orchestrated pipeline** | ✅ Done | `make pipeline` runs Bronze → Silver → Gold once, then exits. Optional: schedule via Render Cron. |
+| **Bronze micro-batch mode** | ✅ Done | `TRIGGER_AVAILABLE_NOW=1` in pipeline; process available messages and exit. |
+| **Streaming vs micro-batch** | ✅ Documented | §4 in this doc; choice is config/env. |
+| **Custom domain (your own URL)** | ⬜ Optional | Use Render subdomain or attach your domain in Render → Custom Domain. |
+| **Fully hands-off trigger (e.g. cron every N min)** | ⬜ Optional | Render Cron (or server cron) can run `make pipeline` periodically so you don’t run it manually. |
+| **Pipeline in cloud — no laptop (Oracle VM free)** | ⬜ Optional | Run the pipeline on a **free Oracle Cloud Always Free VM** with cron (e.g. every 10–15–30 min). Orders at 3 AM get processed; you see data in the morning. Step-by-step: **docs/PIPELINE_IN_CLOUD_FREE.md** (includes creating `cron_run.sh` if missing and verification). |
+| **Dashboard / BI (Grafana, etc.)** | ⬜ Future | Postgres tables are ready; connect a BI tool or build a simple dashboard. |
+| **Full runbook (start to end)** | ⬜ Planned | Single document from account creation → VM + cron → verification and common ops so any operator can track and reproduce setup. To be created once the project is complete; **docs/PIPELINE_IN_CLOUD_FREE.md** is the authoritative pipeline-in-cloud section. |
 
-These are the **next steps** and **future goals** for a production-level, cost-effective, and (optionally) low-latency order pipeline with queryable storage and hosted website.
+**Achieved so far:** Medallion pipeline (Bronze → Silver → Gold) with Aiven Kafka, Parquet + Postgres sync for all layers, hosted website on Render, and one-command pipeline run. Orders are visible in Postgres. **Remaining (optional):** custom domain, scheduled pipeline trigger, **Oracle (or other) free VM + cron** for “no laptop” runs, a BI dashboard, and a **full runbook**.
+
+---
+
+## 6. Full runbook (planned)
+
+**Goal:** Once the project is complete, create a **single runbook (start to end)** so any operator can:
+
+- Follow one document from account creation through VM + cron setup and verification.
+- Track exactly what was done and reproduce the same setup.
+- Use it for handover, onboarding, or creating a second environment.
+
+**Content (planned):** Account sign-up → Oracle (or other) VM creation → install stack (Java, Python, Spark, repo) → configure `.env` and certs → ensure `cron_run.sh` exists and set up cron → verification (crontab, log, data). Optional: common ops (view logs, trigger run from Mac, check Postgres).
+
+**Today:** **docs/PIPELINE_IN_CLOUD_FREE.md** is the authoritative step-by-step for the pipeline-in-cloud part and is written so it can be used as that section of the future runbook.

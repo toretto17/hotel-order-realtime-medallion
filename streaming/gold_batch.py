@@ -24,6 +24,12 @@ from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 
 from streaming.config_loader import get_paths_config, load_config
+from streaming.postgres_sink import (
+    is_enabled as postgres_enabled,
+    write_gold_customer_360,
+    write_gold_daily_sales,
+    write_gold_restaurant_metrics,
+)
 
 
 def _path_has_parquet(path_str: str) -> bool:
@@ -82,8 +88,8 @@ def run_gold_sql_and_write(
     sql_path: Path,
     output_path: str,
     partition_by: list[str] | None = None,
-) -> None:
-    """Run a Gold SQL file and write result to output_path (overwrite)."""
+):
+    """Run a Gold SQL file, write result to output_path (overwrite), return the DataFrame for Postgres sync."""
     if not sql_path.is_file():
         raise FileNotFoundError(f"Gold SQL not found: {sql_path}")
     sql_text = sql_path.read_text()
@@ -93,6 +99,7 @@ def run_gold_sql_and_write(
         writer = writer.partitionBy(*partition_by)
     writer.format("parquet").save(output_path)
     print(f"Gold written: {output_path}")
+    return df
 
 
 def main() -> None:
@@ -108,32 +115,42 @@ def main() -> None:
     sql_dir = _REPO_ROOT / "sql"
     register_silver_views(spark, paths)
 
+    pg_enabled = postgres_enabled(config)
+
     # Daily sales: partition by order_date for efficient date-range reads
     gold_daily_sales_path = paths.get("gold_daily_sales")
     if gold_daily_sales_path:
-        run_gold_sql_and_write(
+        df_daily = run_gold_sql_and_write(
             spark,
             sql_dir / "gold_daily_sales.sql",
             gold_daily_sales_path,
             partition_by=["order_date"],
         )
+        if pg_enabled:
+            write_gold_daily_sales(df_daily, config)
 
     gold_customer_360_path = paths.get("gold_customer_360")
     if gold_customer_360_path:
-        run_gold_sql_and_write(
+        df_cust = run_gold_sql_and_write(
             spark,
             sql_dir / "gold_customer_360.sql",
             gold_customer_360_path,
         )
+        if pg_enabled:
+            write_gold_customer_360(df_cust, config)
 
     gold_restaurant_metrics_path = paths.get("gold_restaurant_metrics")
     if gold_restaurant_metrics_path:
-        run_gold_sql_and_write(
+        df_rest = run_gold_sql_and_write(
             spark,
             sql_dir / "gold_restaurant_metrics.sql",
             gold_restaurant_metrics_path,
         )
+        if pg_enabled:
+            write_gold_restaurant_metrics(df_rest, config)
 
+    if pg_enabled:
+        print("Gold → Postgres: medallion.gold_daily_sales, gold_customer_360, gold_restaurant_metrics synced.")
     print("Gold batch completed.")
 
 

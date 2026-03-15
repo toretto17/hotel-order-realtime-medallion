@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# One-command pipeline run (local or VM). Use from repo root: ./run
+# Same as: make pipeline  or  ./scripts/run_pipeline.sh
+set -e
+cd "$(dirname "$0")"
+if [ ! -f .env ]; then
+  echo "Error: .env not found. Create it from .env.example (see docs)."
+  exit 1
+fi
+set -a; source .env 2>/dev/null; set +a
+export BASE_PATH="${BASE_PATH:-/tmp/medallion}"
+./scripts/run_pipeline.sh

@@ -16,7 +16,7 @@
 
 ### Lesson 2: Bronze
 - **Bronze job:** `streaming/bronze_orders.py` — Spark Structured Streaming: read from Kafka topic `orders` → add columns `value`, `_ingestion_ts`, `_source`, `_partition`, `_offset`, `_topic`, `_ingestion_date` → write Parquet to Bronze path, partitioned by `_ingestion_date`, with checkpoint.
-- **Fix applied:** Kafka connector not in Spark by default → use `--packages` (value in `config/pipeline.yaml` under `spark_packages`: `org.apache.spark:spark-sql-kafka-0-10_2.13:4.0.2`).
+- **Fix applied:** Kafka connector not in Spark by default → use `--packages` (value in `config/pipeline.yaml` under `spark_packages`: `org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0`; project standardizes on Spark 3.5).
 - **Fix applied:** `options()` in PySpark expects kwargs → use `.options(**dict(read_opts))`.
 - **Scripts:** `scripts/setup.sh` (pip install + Java check), `scripts/run_bronze.sh` (reads `spark_packages` from config, sets BASE_PATH/KAFKA_BOOTSTRAP_SERVERS, runs spark-submit). `scripts/produce_test_order.py` — produce one test order from **host** (Python + confluent_kafka).
 - **Single-place deps:** `requirements.txt` header documents Python + Java + Spark Kafka (in config); `config/pipeline.yaml` has `spark_packages`; README and SETUP_AND_RUN point to one-place summary.

@@ -432,13 +432,11 @@ Spark does **not** include the Kafka data source by default. The Kafka connector
 ./scripts/run_bronze.sh
 ```
 
-Or run spark-submit yourself (use the same package string as in `config/pipeline.yaml`):
+Or run spark-submit yourself (use the same package string as in `config/pipeline.yaml`; this project uses **Spark 3.5**):
 
 ```bash
-spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.13:4.0.2 streaming/bronze_orders.py
+spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0 streaming/bronze_orders.py
 ```
-
-(If your Spark is **3.x**, set `spark_packages` in `config/pipeline.yaml` to `org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0` and match the version to your install.)
 
 The job will read from Kafka, add columns `_ingestion_ts`, `_source`, `_partition`, `_offset`, `_ingestion_date`, and write Parquet under `$BASE_PATH/bronze/orders` with checkpoint under `$BASE_PATH/checkpoints/bronze_orders`. Stop with Ctrl+C.
 
@@ -642,9 +640,9 @@ Config file path is fixed at `config/pipeline.yaml` relative to project root; ov
 
 ### “Failed to find data source: kafka”
 
-- Spark does not bundle the Kafka connector. Add it with `--packages` when submitting:
-  - **Spark 4.x (Scala 2.13):** `spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.13:4.0.2 streaming/bronze_orders.py`
-  - **Spark 3.x (Scala 2.12):** `spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0 streaming/bronze_orders.py` (match the version to your Spark).
+- Spark does not bundle the Kafka connector. This project uses **Spark 3.5**; add the connector with `--packages`:
+  - `spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0 streaming/bronze_orders.py`
+- The run script (`./scripts/run_bronze.sh`) reads `spark_packages` from `config/pipeline.yaml` and passes it automatically.
 - The first run may download the package from Maven Central; ensure you have network access.
 
 ### Py4JError when stopping Bronze (Ctrl+C)

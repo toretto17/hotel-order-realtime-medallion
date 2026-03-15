@@ -42,7 +42,7 @@ Use this same name when cloning, creating a new repo, or referring to the projec
 
 - **Python:** `requirements.txt` — run `pip3 install -r requirements.txt` or `make install`.
 - **Java 11+:** For Spark; not in pip. See [docs/SETUP_AND_RUN.md](./docs/SETUP_AND_RUN.md#4-install-java-required-for-spark--lesson-2).
-- **Spark Kafka connector:** In `config/pipeline.yaml` (`spark_packages`); used by `make bronze` / `./scripts/run_bronze.sh`.
+- **Spark 3.5:** This project standardizes on Spark 3.5.x. Install Spark 3.5 (e.g. 3.5.0); Kafka connector is in `config/pipeline.yaml` (`spark_packages`) and used by `make bronze` / `./scripts/run_bronze.sh`.
 - **Kafka:** This project uses **Aiven Kafka only** (no local Docker). Configure `.env` with Aiven credentials; see [docs/AIVEN_SETUP_STEP_BY_STEP.md](./docs/AIVEN_SETUP_STEP_BY_STEP.md) and [SETUP_AND_RUN.md](./docs/SETUP_AND_RUN.md).
 
 ## Quick run (Makefile) — Aiven Kafka only
@@ -74,6 +74,8 @@ Or: **`make run`** to wait for Aiven and create the topic; then run `make bronze
 - **Free website + domain:** Render free subdomain or custom domain. **docs/NEXT_STEPS_AND_FUTURE_GOALS.md** §2.
 - **Orchestrated pipeline:** Trigger Bronze → Silver → Gold automatically (micro-batch + orchestrator). **docs/NEXT_STEPS_AND_FUTURE_GOALS.md** §3.
 - **Streaming vs latency:** Long-running vs triggered; Zomato/IPO-style. **docs/NEXT_STEPS_AND_FUTURE_GOALS.md** §4.
+- **Pipeline in cloud (no laptop):** Run the pipeline on a **free Oracle Cloud Always Free VM** with cron so orders at 3 AM are processed without your laptop. **docs/PIPELINE_IN_CLOUD_FREE.md** (step-by-step; includes creating `cron_run.sh` if missing and verification).
+- **Runbook (planned):** Create a **single runbook (start to end)** once the project is complete: account creation → VM + cron setup → verification and common ops, so any operator can track and reproduce what was done. See **docs/NEXT_STEPS_AND_FUTURE_GOALS.md** §6 and **docs/PIPELINE_IN_CLOUD_FREE.md** (pipeline-in-cloud section).
 
 **Full next steps and production choices:** **docs/NEXT_STEPS_AND_FUTURE_GOALS.md**. Production approach: **docs/VIDEO_ANALYSIS.md** §6–7 and **ARCHITECTURE.md**.
 

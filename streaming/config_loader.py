@@ -19,6 +19,7 @@ import yaml
 # Default: repo root = parent of 'streaming'
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _CONFIG_PATH = _REPO_ROOT / "config" / "pipeline.yaml"
+_ENV_LOADED = False
 
 # Pattern: ${VAR} or ${VAR:-default}
 _ENV_PATTERN = re.compile(r"\$\{([^}:]+)(?::-([^}]*))?\}")
@@ -44,7 +45,19 @@ def load_config(config_path: Path | str | None = None) -> dict[str, Any]:
     """
     Load pipeline.yaml and substitute environment variables.
     Returns a dict with keys: kafka, streaming, paths, postgres.
+    Loads .env from repo root once so POSTGRES_JDBC_URL etc. are available in Spark driver.
     """
+    global _ENV_LOADED
+    if not _ENV_LOADED:
+        _env_file = _REPO_ROOT / ".env"
+        if _env_file.is_file():
+            try:
+                from dotenv import load_dotenv
+                load_dotenv(_env_file)
+            except ImportError:
+                pass
+        _ENV_LOADED = True
+
     path = Path(config_path) if config_path else _CONFIG_PATH
     if not path.is_file():
         raise FileNotFoundError(f"Config not found: {path}")
@@ -80,6 +93,12 @@ def get_spark_packages(config: dict[str, Any] | None = None) -> str:
     """Spark --packages string (e.g. Kafka connector); use with spark-submit --packages."""
     cfg = config or load_config()
     return cfg.get("spark_packages", "")
+
+
+def get_postgres_config(config: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Postgres section: jdbc_url, schema, tables (bronze_orders, silver_orders, etc.)."""
+    cfg = config or load_config()
+    return cfg.get("postgres", {})
 
 
 # Convenience: one-liner for jobs
