@@ -2,7 +2,7 @@
 # Use from project root. First time: make install. Configure .env with Aiven credentials (see docs/AIVEN_SETUP_STEP_BY_STEP.md).
 # Then: make run (or make wait-kafka + make topics-create) → make bronze (T1), make produce or make web (T2) → make silver → make gold
 
-.PHONY: install check clean clean-data clean-bronze clean-silver clean-gold wait-kafka topics-create bronze silver gold pipeline produce produce-orders produce-orders-reset web run stop test-kafka check-order postgres-schema postgres-backfill postgres-truncate vm-run help
+.PHONY: install check clean clean-data clean-bronze clean-silver clean-gold wait-kafka topics-create bronze silver gold pipeline produce produce-orders produce-orders-reset web run stop test-kafka check-order postgres-schema postgres-backfill postgres-truncate vm-run login-ssh help
 
 # Default target
 help:
@@ -31,6 +31,7 @@ help:
 	@echo "  make pipeline         Run full pipeline once: Bronze → Silver → Gold (micro-batch each; no long-running jobs)"
 	@echo "  ./run                 Same as make pipeline (one command from repo root; use this on VM after SSH)"
 	@echo "  make vm-run           SSH into VM and run pipeline (one command from Mac; set VM_HOST and SSH_KEY in .env)"
+	@echo "  make login-ssh        SSH into VM and open a shell in the repo (hotel-order-realtime-medallion); then run ./run or ./scripts/cron_run.sh"
 	@echo "  make produce          Produce one test order to Aiven Kafka"
 	@echo "  make produce-orders [N=100]  Produce N orders; order_id continues from last run"
 	@echo "  make produce-orders-reset [N=100]  Produce N orders starting from order_id 1"
@@ -58,7 +59,8 @@ help:
 	@echo "One-shot pipeline (Bronze → Silver → Gold in one command):"
 	@echo "  make pipeline        # or ./run from repo root (VM: ssh in, cd repo, ./run)"
 	@echo "  make vm-run          # from Mac: SSH to VM and run pipeline (one command; set VM_HOST, SSH_KEY in .env)"
-	@echo "  Cron on VM: use scripts/cron_run.sh in crontab; pipeline then runs every 15–30 min automatically"
+	@echo "  make login-ssh       # from Mac: SSH to VM, land in repo dir; then ./run or crontab -l etc."
+	@echo "  Cron on VM: use scripts/cron_run.sh in crontab; pipeline then runs every 10–15 min automatically"
 	@echo ""
 	@echo "Quick start (after .env is set):"
 	@echo "  make run              Same as: make wait-kafka + make topics-create; then run make bronze (T1) and make produce or make web (T2)"
@@ -66,7 +68,7 @@ help:
 	@echo "Stop: Ctrl+C in each terminal running bronze, silver, or web. No local Kafka to stop."
 
 install:
-	@chmod +x scripts/setup.sh scripts/run_bronze.sh scripts/run_pipeline.sh scripts/cron_run.sh scripts/ssh_run_pipeline.sh run 2>/dev/null || true
+	@chmod +x scripts/setup.sh scripts/run_bronze.sh scripts/run_pipeline.sh scripts/cron_run.sh scripts/ssh_run_pipeline.sh scripts/ssh_login.sh run 2>/dev/null || true
 	./scripts/setup.sh
 
 check:
@@ -112,6 +114,11 @@ pipeline:
 vm-run:
 	@chmod +x scripts/ssh_run_pipeline.sh 2>/dev/null || true
 	./scripts/ssh_run_pipeline.sh
+
+# SSH into VM and open a shell in the repo (hotel-order-realtime-medallion). Set VM_HOST and SSH_KEY in .env.
+login-ssh:
+	@chmod +x scripts/ssh_login.sh 2>/dev/null || true
+	./scripts/ssh_login.sh
 
 # Produce one test order to Aiven Kafka.
 produce:

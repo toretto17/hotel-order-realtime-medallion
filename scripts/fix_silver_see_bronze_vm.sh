@@ -34,7 +34,16 @@ for d in "$BRONZE"/_ingestion_date=*; do
 done
 
 echo ""
-echo "=== 3. Run pipeline (Silver should now see Bronze data) ==="
+echo "=== 3. Clear Silver checkpoint (it has stale _ingestion_date paths → 'file not found') ==="
+for cp in "$BASE/checkpoints/silver_orders" "$BASE/checkpoints/silver_orders_order_items"; do
+  if [ -d "$cp" ]; then
+    rm -rf "$cp"
+    echo "  Cleared $cp"
+  fi
+done
+
+echo ""
+echo "=== 4. Run pipeline (Silver will discover files at ingestion_date=... and process) ==="
 export BASE_PATH="${BASE_PATH:-/home/ubuntu/medallion_data}"
 [ -f .env ] && set -a && source .env 2>/dev/null && set +a
 ./scripts/run_pipeline.sh
