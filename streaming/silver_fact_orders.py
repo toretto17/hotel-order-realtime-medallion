@@ -72,7 +72,8 @@ from streaming.postgres_sink import is_enabled as postgres_enabled, write_silver
 # ---------------------------------------------------------------------------
 
 # Bronze Parquet schema: Spark requires explicit schema for readStream on files.
-# _ingestion_date is added by Bronze partitioning (partition path column).
+# Partition column: Bronze uses "ingestion_date" (no leading _) so Spark file source
+# sees the path (Hadoop excludes dirs starting with "_").
 BRONZE_PARQUET_SCHEMA = StructType([
     StructField("value", StringType(), nullable=True),
     StructField("_ingestion_ts", TimestampType(), nullable=False),
@@ -81,6 +82,7 @@ BRONZE_PARQUET_SCHEMA = StructType([
     StructField("_offset", LongType(), nullable=True),
     StructField("_topic", StringType(), nullable=True),
     StructField("_ingestion_date", StringType(), nullable=True),
+    StructField("ingestion_date", StringType(), nullable=True),  # partition path column (new Bronze)
 ])
 
 # Order JSON schema: nullable=True on optional fields for schema evolution.
@@ -403,7 +405,7 @@ def create_silver_stream(spark: SparkSession, config: dict) -> None:
 
     # -------------------------------------------------------------------------
     # 1. Read Bronze as a file stream (only new files since last checkpoint).
-    #    recursiveFileLookup=true so partition subdirs (e.g. _ingestion_date=...) are scanned.
+    #    recursiveFileLookup=true so partition subdirs (e.g. ingestion_date=...) are scanned.
     # -------------------------------------------------------------------------
     bronze_stream = (
         spark.readStream
@@ -533,6 +535,8 @@ def create_silver_stream(spark: SparkSession, config: dict) -> None:
         print(f"\n{divider}")
         print("  Silver: no new Bronze data to process.")
         print("  All Bronze records were already processed in a previous run.")
+        print("  (If Bronze just wrote rows in the same run, this can be file-stream timing;")
+        print("   run_pipeline.sh will retry Silver once, or run: make pipeline again.)")
         print(f"{divider}\n")
     else:
         print(f"\n{divider}")

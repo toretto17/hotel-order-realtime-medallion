@@ -121,11 +121,13 @@ def create_bronze_stream(spark: SparkSession, config: dict) -> None:
         F.col("topic").alias("_topic"),
     )
 
-    # Optional: partition Bronze by ingestion date for efficient reads and retention
+    # Partition by date so Silver can read incrementally. Use "ingestion_date" (no leading _)
+    # because Spark/Hadoop file source excludes paths starting with "_", so Silver would
+    # never see files under _ingestion_date=...
     stream = stream.withColumn(
         "_ingestion_date",
         F.to_date(F.col("_ingestion_ts")),
-    )
+    ).withColumn("ingestion_date", F.col("_ingestion_date"))
 
     # -------------------------------------------------------------------------
     # 2. Trigger: periodic (e.g. 1 minute) or availableNow for one-shot batch
@@ -144,7 +146,7 @@ def create_bronze_stream(spark: SparkSession, config: dict) -> None:
 
     def _foreach_batch(batch_df, batch_id):  # noqa: B008
         # Parquet first (same as before)
-        batch_df.write.mode("append").partitionBy("_ingestion_date").parquet(bronze_path)
+        batch_df.write.mode("append").partitionBy("ingestion_date").parquet(bronze_path)
         # Postgres sync (idempotent: ON CONFLICT DO NOTHING)
         if pg_enabled:
             write_bronze_batch(batch_df, config)

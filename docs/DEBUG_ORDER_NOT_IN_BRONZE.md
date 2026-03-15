@@ -22,8 +22,24 @@ python3 scripts/check_order_in_medallion.py web-567ebca2749c
 
 Interpretation:
 
-- **FOUND in Bronze, NOT in Silver** → Kafka and Bronze are fine; Silver didn’t see the new file (run pipeline again or see pipeline troubleshooting).
+- **FOUND in Bronze, NOT in Silver** → Kafka and Bronze are fine; Silver didn’t see the new file. See **§1b** below.
 - **NOT FOUND in Bronze** → Either the order never reached Kafka (website/producer), or the VM consumer (Bronze) can’t connect or is misconfigured. Continue below.
+
+### 1b. Silver always reports “no new Bronze data” (but order is in Bronze)
+
+**Cause:** Spark/Hadoop’s file source excludes paths whose names start with `_`. Bronze used to partition by `_ingestion_date`, so files lived under `bronze/orders/_ingestion_date=.../` and were never listed by Silver.
+
+**Fix (applied in code):** Bronze now partitions by `ingestion_date` (no leading `_`), so new data is written under `ingestion_date=...` and Silver can see it. Pull the latest code and run the pipeline; **new** Bronze data will flow to Silver.
+
+**Existing Bronze data** (already under `_ingestion_date=...`): Silver will still not list it. To make that data visible to Silver once, on the VM rename the partition directory so it no longer starts with `_`:
+
+```bash
+BASE=/home/ubuntu/medallion_data
+# One-time: rename so Silver file source can see the partition
+mv "$BASE/bronze/orders/_ingestion_date=2026-03-15" "$BASE/bronze/orders/ingestion_date=2026-03-15"
+```
+
+Then run the pipeline again (`./run`); Silver will pick up that partition.
 
 ---
 

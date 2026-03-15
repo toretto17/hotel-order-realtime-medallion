@@ -359,6 +359,20 @@ Use these to confirm everything is in place and to track what was done.
 
 **From your Mac:** `make vm-run` SSHs to the VM and runs the pipeline once (convenience only; it does not replace cron).
 
+#### Troubleshooting: Silver “no new data” / Postgres empty
+
+- **Bronze wrote 0 this run** → Kafka had no new messages. Bronze does not write to Postgres when there is no batch, so no new rows in `medallion.bronze_orders` that run. To backfill Postgres from existing Bronze Parquet on the VM:  
+  `cd ~/hotel-order-realtime-medallion && export BASE_PATH=/home/ubuntu/medallion_data && . ./.env && python3 scripts/backfill_postgres_from_parquet.py`  
+  (Optional: `... backfill_postgres_from_parquet.py --all` to backfill Silver and Gold from Parquet too.)
+
+- **Silver says “no new Bronze data” but Bronze Parquet has data** → (1) **Root cause (fixed in code):** Bronze used to partition by `_ingestion_date`; Spark’s file source ignores paths starting with `_`, so Silver never saw those files. The project now uses `ingestion_date` (no underscore). Pull latest code so **new** Bronze data is under `ingestion_date=...` and Silver will see it. (2) **Existing data** under `_ingestion_date=...`: on the VM run  
+  `mv /home/ubuntu/medallion_data/bronze/orders/_ingestion_date=2026-03-15 /home/ubuntu/medallion_data/bronze/orders/ingestion_date=2026-03-15`  
+  (adjust date if needed), then run the pipeline again. (3) **Alternatively**, clear Silver checkpoints so Silver reprocesses all Bronze:  
+  `python3 scripts/clean_medallion_data.py --silver-only` then `./scripts/cron_run.sh`  
+  Silver will re-read all Bronze files and write to Silver Parquet (and Postgres if `POSTGRES_JDBC_URL` is set).
+
+- **Postgres still empty after pipeline runs** → Confirm `POSTGRES_JDBC_URL` is in the VM’s `.env` and that the VM can reach the Postgres host (`nc -vz <host> <port>`). Then run the backfill command above once to sync existing Parquet → Postgres.
+
 ---
 
 ### Step 1 (original): Create an Oracle Cloud account and VM
