@@ -71,18 +71,20 @@ echo ""
 
 BRONZE_ROWS=$(_read_signal "$BRONZE_SIGNAL")
 if [ "$BRONZE_ROWS" = "0" ]; then
-  echo "  Bronze: no new Kafka messages. Silver will still run to retry any unfinished work."
+  echo "  Bronze: no new Kafka messages this run. Silver will still run (processes any pending Bronze data from checkpoint)."
   echo ""
+else
+  echo "  Bronze wrote $BRONZE_ROWS row(s). Waiting 5s for filesystem sync so Silver (incremental) can see new Parquet..."
+  sleep 5
 fi
 
 # ── 2/3 Silver ───────────────────────────────────────────────────────────────
-# Silver ALWAYS runs — it owns its own checkpoint and knows what Bronze data
-# it has already processed. If a previous Silver run failed mid-batch (e.g.
-# fact_order_items crashed), Silver will automatically re-process that batch
-# here. Skipping Silver based on Bronze = 0 would cause permanent data loss
-# for any batch that Bronze wrote but Silver didn't fully commit.
+# Silver runs incrementally: only processes Bronze files not yet in its checkpoint (upsert).
+# When Bronze wrote rows this run, we wait 5s so the new file is visible; if Silver still
+# sees 0 (timing), we retry once so the new file is picked up without touching checkpoint.
 echo "--- 2/3 Silver (process new Bronze data, then exit) ---"
-if ! ./scripts/run_silver.sh; then
+_run_silver() { ./scripts/run_silver.sh; }
+if ! _run_silver; then
   echo ""
   echo "  ┌─────────────────────────────────────────────────────────────┐"
   echo "  │  Silver failed. Gold was NOT run.                           │"
@@ -95,6 +97,16 @@ fi
 echo ""
 
 SILVER_ROWS=$(_read_signal "$SILVER_SIGNAL")
+# If Bronze wrote rows but Silver saw 0, retry Silver once (file not yet visible to Spark file source)
+if [ "$BRONZE_ROWS" != "0" ] && [ "$SILVER_ROWS" = "0" ]; then
+  echo "  Bronze wrote $BRONZE_ROWS row(s) but Silver saw 0 (new file not yet visible). Retrying Silver in 5s (incremental, no checkpoint clear)..."
+  sleep 5
+  if _run_silver; then
+    SILVER_ROWS=$(_read_signal "$SILVER_SIGNAL")
+  fi
+  echo ""
+fi
+
 if [ "$SILVER_ROWS" = "0" ]; then
   _banner_no_data "Silver" "All Bronze data already fully processed in a previous run."
   echo "=== Pipeline complete (Silver already up to date, Gold skipped). ==="
